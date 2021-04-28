@@ -6,6 +6,7 @@ Stores in arrays and uses builtin cumsum.
 """
 
 using Plots
+using ProfileView
 # can compare Makie for speed
 
 
@@ -44,7 +45,7 @@ function updateAcc!(acc, pos, mass, grav_constant=G)
   end
 end
 
-function simulate(curr_pos, prev_pos, tmp_pos, mass, acc)
+function simulate(curr_pos, prev_pos, tmp_pos, mass, acc, timesteps=TIMESTEPS)
   """
   # using Plots + GR to create a gif
   gr() # GR backend
@@ -70,7 +71,7 @@ function simulate(curr_pos, prev_pos, tmp_pos, mass, acc)
   x = @view curr_pos[:, 1]
   y = @view curr_pos[:, 2]
   plot = scatter(x, y, xlim = (-2, 10), ylim = (-2, 2), legend=false)
-  for i ∈ 1:TIMESTEPS
+  for i ∈ 1:timesteps
     updateAcc!(acc, curr_pos, mass)
     # CHECK/VERIFY: verlet integration
     tmp_pos = copy(curr_pos)
@@ -81,7 +82,6 @@ function simulate(curr_pos, prev_pos, tmp_pos, mass, acc)
     y = @view curr_pos[:, 2]
     scatter!(plot, x, y, xlim = (-2, 2), ylim = (-2, 2), legend=false)
     gui() 
-    sleep(.1)
   end
 end
 
@@ -93,4 +93,7 @@ mass = ones(N) # masses normalized with respect to gravitational constant
 acc = Array{Float64}(undef, N, 2)
 
 # simulation loop
-simulate(curr_pos, prev_pos, tmp_pos, mass, acc)
+simulate(curr_pos, prev_pos, tmp_pos, mass, acc, 10) # run once to compile
+
+# profile
+@profview simulate(curr_pos, prev_pos, tmp_pos, mass, acc, TIMESTEPS)
