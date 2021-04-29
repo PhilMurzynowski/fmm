@@ -68,8 +68,8 @@ function simulate(pos_memory, mass, acc, timesteps=TIMESTEPS, num_past_positions
     @assert curr_pos != prev_pos
     x = @view pos_memory[curr_idx, :, 1]
     y = @view pos_memory[curr_idx, :, 2]
-    plot((pos_memory[:, :, 1], pos_memory[:, :, 2]), xlim = (-2, 2), ylim = (-2, 2), color=1, label="", legend=false)
-    scatter!((x, y), xlim = (-2, 2), ylim = (-2, 2), legend=false, markerstrokewidth=0, markersize=7*mass, color=1, label="", )
+    plot((pos_memory[:, :, 1], pos_memory[:, :, 2]), xlim = (-2, 2), ylim = (-2, 2), color=:black, label="", legend=false)
+    scatter!((x, y), xlim = (-2, 2), ylim = (-2, 2), legend=false, markerstrokewidth=0, markersize=7*mass, color=:black, label="", )
     gui() 
   end
 end
