@@ -81,6 +81,7 @@ pos_memory = Array{Float64}(undef, NUM_PAST_POSITIONS, N, 2)
 pos_memory[1, :, :] = rand(Float64, (N, 2))
 pos_memory[2, :, :] = pos_memory[1, :, :] + 1e-5*rand(Float64, (N, 2))
 mass = 0.5*rand(Float64, N) .+ 1 # masses normalized with respect to gravitational constant
+mass[1] *= 10; # make one mass large so keeps things mostly in place
 acc = Array{Float64}(undef, N, 2)
 
 # simulation loop
