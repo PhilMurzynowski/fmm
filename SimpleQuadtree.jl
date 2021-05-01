@@ -84,15 +84,17 @@ function displayQuadtreeBoxesWrapper(array, center, dim, depth)
   displayQuadtreeBoxes(p, tree, center, dim)
 end
 
-
-""" Display quadtree boxes and particles helper"""
+""" Display quadtree boxes & particles helper"""
 function displayQuadtreeBoxesAndParticles(plot, array, tree, center, dim)
   half_dim = dim/2
   if tree.depth == 0
     plot!(plot, Shape(real(center) .+ [-dim, dim, dim, -dim], imag(center) .+ [-dim, -dim, dim, dim]), opacity=0.5, leg = false)
-    x = real.(array[tree.first:tree.last])
-    y = imag.(array[tree.first:tree.last])
-    scatter!(plot, (x, y), legend=false, label="")
+    if tree.last >= tree.first # if there is more than one particle 
+      points = array[tree.first:tree.last]
+      x = real.(points)
+      y = imag.(points)
+      scatter!(plot, (x, y), legend=false, label="")
+    end
   else 
     top_left_center = center - half_dim + half_dim*1im
     top_right_center = center + half_dim + half_dim*1im
@@ -113,8 +115,61 @@ function displayQuadtreeBoxesAndParticlesWrapper(array, center, dim, depth)
   return p
 end
 
-function countNumberOfPointsInQuadtree(tree)
-  # TODO
+""" Display quadtree boxes, particles, mass helper"""
+function displayQuadtreeBoxesParticlesMass(plot, array, tree, center, dim)
+  half_dim = dim/2
+  if tree.depth == 0
+    plot!(plot, Shape(real(center) .+ [-dim, dim, dim, -dim], imag(center) .+ [-dim, -dim, dim, dim]), opacity=0.5, leg = false)
+    if tree.last > tree.first # if there is more than one particle 
+      points = first.(array[tree.first:tree.last])
+      x = real.(points)
+      y = imag.(points)
+      masses = getfield.(array[tree.first:tree.last], 2)
+      scatter!(plot, (x, y), markersize=masses, legend=false, label="")
+    elseif tree.last == tree.first # one particle
+      point = array[tree.first]
+      x = real(point)
+      y = imag(point)
+      mass = array[tree.first][2]
+      scatter!(plot, (x, y), markersize=mass, legend=false, label="")
+    end
+  else 
+    top_left_center = center - half_dim + half_dim*1im
+    top_right_center = center + half_dim + half_dim*1im
+    bot_left_center = center - half_dim - half_dim*1im 
+    bot_right_center = center + half_dim - half_dim*1im
+    displayQuadtreeBoxesParticlesMass(plot, array, tree.children[1], top_left_center, half_dim)
+    displayQuadtreeBoxesParticlesMass(plot, array, tree.children[2], top_right_center, half_dim)
+    displayQuadtreeBoxesParticlesMass(plot, array, tree.children[3], bot_left_center, half_dim)
+    displayQuadtreeBoxesParticlesMass(plot, array, tree.children[4], bot_right_center, half_dim)
+  end
 end
 
+function displayQuadtreeBoxesParticlesMassWrapper(array, center, dim, depth)
+  gr(size=(1000, 1000))
+  tree = buildQuadtree!(array, nothing, center, dim, 1, length(array), depth)
+  p = plot()
+  displayQuadtreeBoxesParticlesMass(p, array, tree, center, dim)
+  return p
+end
 
+function countNumberOfPointsInQuadtree(tree)
+  if tree.depth == 0
+    if tree.last >= tree.first
+      return tree.last - tree.first + 1
+    else
+      return 0
+    end
+  else
+    return sum(map(subtree -> countNumberOfPointsInQuadtree(subtree), tree.children))
+  end
+end
+
+function propagateMassUp(tree, masses)
+  if tree.depth == 0
+    array_subsection = @view(masses[tree.first, tree.last])
+    tree.potential = sum
+  else
+
+  end
+end
