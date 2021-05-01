@@ -14,15 +14,15 @@ end
   # orange  =>  a:c 
   # green   =>  c+1:d
   # blue    =>  d+1:end
-function fourColorSort!(array, center_value)
+function fourColorSort!(array, center_value, first, last)
   center_x = real(center_value)
   center_y = imag(center_value)
   len = length(array)
   # four pointers to the four colors
-  a = 1
-  b = 1
-  c = len
-  d = len
+  a = first
+  b = first
+  c = last
+  d = last
   while (b <= c)
     if (imag(array[b]) >= center_y)
       if (real(array[b]) <= center_x)
