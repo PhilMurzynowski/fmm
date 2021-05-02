@@ -61,7 +61,7 @@ end
 function visualTestAllPointsWithMass()
   num_particles = 201
   array = Array{Tuple{ComplexF64, Float64}, 1}(undef, num_particles)
-  map(x -> (rand(ComplexF64) .- (0.5 + 0.5im), rand(Float64)), array)
+  array = [(rand(ComplexF64) - (0.5 + 0.5im), rand(Float64)) for x in array]
   center = 0.0 + 0.0im
   dim = 0.5
   depth = 4
@@ -73,7 +73,7 @@ function visualTestAllPointsWithMass()
   masses = getfield.(array, 2)
   x = real.(points)
   y = imag.(points)
-  p1 = scatter((x, y), leg=false, label="", markersize=masses)
+  p1 = scatter((x, y), leg=false, label="", markersize=10*masses)
   xlims!(xlimits)
   ylims!(ylimits)
   p2 = displayQuadtreeBoxesParticlesMassWrapper(array, center, dim, depth)

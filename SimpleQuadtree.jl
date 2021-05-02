@@ -125,13 +125,13 @@ function displayQuadtreeBoxesParticlesMass(plot, array, tree, center, dim)
       x = real.(points)
       y = imag.(points)
       masses = getfield.(array[tree.first:tree.last], 2)
-      scatter!(plot, (x, y), markersize=masses, legend=false, label="")
+      scatter!(plot, (x, y), markersize=10*masses, legend=false, label="")
     elseif tree.last == tree.first # one particle
-      point = array[tree.first]
+      point = first(array[tree.first])
       x = real(point)
       y = imag(point)
-      mass = array[tree.first][2]
-      scatter!(plot, (x, y), markersize=mass, legend=false, label="")
+      mass = getfield(array[tree.first], 2)
+      scatter!(plot, (x, y), markersize=10*mass, legend=false, label="")
     end
   else 
     top_left_center = center - half_dim + half_dim*1im
@@ -146,7 +146,6 @@ function displayQuadtreeBoxesParticlesMass(plot, array, tree, center, dim)
 end
 
 function displayQuadtreeBoxesParticlesMassWrapper(array, center, dim, depth)
-  gr(size=(1000, 1000))
   tree = buildQuadtree!(array, nothing, center, dim, 1, length(array), depth)
   p = plot()
   displayQuadtreeBoxesParticlesMass(p, array, tree, center, dim)
