@@ -104,6 +104,7 @@ function testPropagateMassUp()
 
   tree = buildQuadtree!(array, nothing, center, dim, 1, length(array), depth)
   propagateMassUp!(tree, array)
+  return
 end
 
 

@@ -163,17 +163,17 @@ function countNumberOfPointsInQuadtree(tree) if tree.depth == 0
 end
 
 function propagateMassUp!(tree, array)
-  println("In propagate function")
   if tree.depth == 0
-    println("base case")
-    masses = getfield.(array[tree.first:tree.last], 2)
-    println(masses)
-    tree.massExpansion = sum(masses)
-    return tree.massExpansion
+    if tree.last > tree.first
+      masses = getfield.(array[tree.first:tree.last], 2)
+      tree.massExpansion = sum(masses)
+    elseif tree.last == tree.first
+      mass = getfield(array[tree.first], 2)
+      tree.massExpansion = mass
+    end
   else
-    println("non base case")
-    #tree.massExpansion = mapreduce((subtree) -> propagateMassUp!(subtree, array), +, tree.children) 
-    tree.massExpansion = sum([propagateMassUp!(subtree, array) for subtree in tree.children]) 
-    return tree.massExpansion
+    tree.massExpansion = mapreduce((subtree) -> propagateMassUp!(subtree, array), +, tree.children) 
+    #tree.massExpansion = sum([propagateMassUp!(subtree, array) for subtree in tree.children]) 
   end
+  return tree.massExpansion
 end
