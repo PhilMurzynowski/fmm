@@ -85,9 +85,31 @@ function visualTestAllPointsWithMass()
   gui()
 end
 
+function testMass(tree, array)
+  if depth > 0 
+    for subtree in tree.children
+      testMass(subtree, array)
+    end
+  end
+  @assert tree.massExpansion = sum(getfield.(array[tree.first, tree.last], 2))
+end
+
+function testPropagateMassUp()
+  num_particles = 201
+  array = Array{Tuple{ComplexF64, Float64}, 1}(undef, num_particles)
+  array = [(rand(ComplexF64) - (0.5 + 0.5im), rand(Float64)) for x in array]
+  center = 0.0 + 0.0im
+  dim = 0.5
+  depth = 4
+
+  tree = buildQuadtree!(array, nothing, center, dim, 1, length(array), depth)
+  propagateMassUp!(tree, array)
+end
+
 
 visualTestBoxesSpanFullSpace()
 visualTestAllPointsInQuadtree()
 testNumberOfPointsInQuadtree()
 testNumberOfPointsWithMass()
 visualTestAllPointsWithMass()
+testPropagateMassUp()

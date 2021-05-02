@@ -19,19 +19,19 @@ using Plots
 # blue    =>  d+1:last
 mutable struct Box
   depth::Int                  # useful for verification
-  potential::Float64
+  massExpansion::Float64
   first::Int
   last::Int
   parent::Union{Box, Nothing}
-  #top_left_child::Box         # potentially convert children to array
+  #top_left_child::Box         # massExpansionly convert children to array
   #top_right_child::Box
   #bot_left_child::Box
   #bot_right_child::Box
   #children::Union{Array{Box, 1}, Nothing}
   children::Array{Box, 1}
-  Box(depth::Int, potential::Float64, first::Int, last::Int) = new(depth, potential, first, last, nothing)
-  Box(depth::Int, potential::Float64, first::Int, last::Int, parent::Box) = new(depth, potential, first, last, parent)
-  Box(depth::Int, potential::Float64, first::Int, last::Int, parent::Nothing) = new(depth, potential, first, last, nothing)
+  Box(depth::Int, massExpansion::Float64, first::Int, last::Int) = new(depth, massExpansion, first, last, nothing)
+  Box(depth::Int, massExpansion::Float64, first::Int, last::Int, parent::Box) = new(depth, massExpansion, first, last, parent)
+  Box(depth::Int, massExpansion::Float64, first::Int, last::Int, parent::Nothing) = new(depth, massExpansion, first, last, nothing)
 end
 
 
@@ -151,9 +151,7 @@ function displayQuadtreeBoxesParticlesMassWrapper(array, center, dim, depth)
   displayQuadtreeBoxesParticlesMass(p, array, tree, center, dim)
   return p
 end
-
-function countNumberOfPointsInQuadtree(tree)
-  if tree.depth == 0
+function countNumberOfPointsInQuadtree(tree) if tree.depth == 0
     if tree.last >= tree.first
       return tree.last - tree.first + 1
     else
@@ -164,11 +162,18 @@ function countNumberOfPointsInQuadtree(tree)
   end
 end
 
-function propagateMassUp(tree, masses)
+function propagateMassUp!(tree, array)
+  println("In propagate function")
   if tree.depth == 0
-    array_subsection = @view(masses[tree.first, tree.last])
-    tree.potential = sum
+    println("base case")
+    masses = getfield.(array[tree.first:tree.last], 2)
+    println(masses)
+    tree.massExpansion = sum(masses)
+    return tree.massExpansion
   else
-
+    println("non base case")
+    #tree.massExpansion = mapreduce((subtree) -> propagateMassUp!(subtree, array), +, tree.children) 
+    tree.massExpansion = sum([propagateMassUp!(subtree, array) for subtree in tree.children]) 
+    return tree.massExpansion
   end
 end
