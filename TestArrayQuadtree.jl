@@ -162,13 +162,42 @@ function testFindInteractionIdxs()
 
 end
 
+function testGetBoxCenter()
+
+  side_length::Float64 = 1.0
+  #depth 1
+  @assert getBoxCenter(1, 1, side_length) ≈ 0.25 + 0.75im
+  @assert getBoxCenter(1, 2, side_length) ≈ 0.25 + 0.25im
+  @assert getBoxCenter(1, 3, side_length) ≈ 0.75 + 0.75im
+  @assert getBoxCenter(1, 4, side_length) ≈ 0.75 + 0.25im
+
+  # some depth 2 tests
+  @assert getBoxCenter(2, 1, side_length) ≈ 0.125 + 0.875im
+  @assert getBoxCenter(2, 4, side_length) ≈ 0.125 + 0.125im
+  @assert getBoxCenter(2, 5, side_length) ≈ 0.375 + 0.875im
+
+end
+
+function testVisualBuildQuadtree()
+  
+  depth::Int = 4
+  tree::Array{Box, 1} = buildQuadtree(depth)
+  displayQuadtree(tree, depth)
+
+end
 
 function runTests()
   testFindParentIdx()
   testFindChildrenIdxs()
   testFindNeighborIdxs()
   testFindInteractionIdxs()
+  testGetBoxCenter()
+end
+
+function runVisualTests()
+  testVisualBuildQuadtree()
 end
 
 
 runTests()
+runVisualTests()
