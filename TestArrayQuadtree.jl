@@ -1,6 +1,26 @@
 include("ArrayQuadtree.jl")
 
 function testFindParentIdx()
+
+  # depth 2
+  @assert findParentIdx(2, 1) ==  1
+  @assert findParentIdx(2, 2) ==  1
+  @assert findParentIdx(2, 3) ==  2
+  @assert findParentIdx(2, 4) ==  2
+  @assert findParentIdx(2, 5) ==  1
+  @assert findParentIdx(2, 6) ==  1
+  @assert findParentIdx(2, 7) ==  2
+  @assert findParentIdx(2, 8) ==  2
+  @assert findParentIdx(2, 9) ==  3
+  @assert findParentIdx(2, 10) == 3
+  @assert findParentIdx(2, 11) == 4
+  @assert findParentIdx(2, 12) == 4
+  @assert findParentIdx(2, 13) == 3
+  @assert findParentIdx(2, 14) == 3
+  @assert findParentIdx(2, 15) == 4
+  @assert findParentIdx(2, 16) == 4
+
+  # depth 3
   @assert findParentIdx(3, 1) ==  1
   @assert findParentIdx(3, 2) ==  1
   @assert findParentIdx(3, 3) ==  2
@@ -65,6 +85,11 @@ function testFindParentIdx()
   @assert findParentIdx(3, 62) == 15
   @assert findParentIdx(3, 63) == 16
   @assert findParentIdx(3, 64) == 16
+
+  # a few quick depth 4 checks
+  @assert findParentIdx(4, 33) == 9
+  @assert findParentIdx(4, 65) == 17
+  @assert findParentIdx(4, 84) == 18
 
 end
 

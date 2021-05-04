@@ -23,9 +23,7 @@ end
 
 function findParentIdx(depth::Int, idx::Int)
   y::Int = ceil(mod1(idx, 2^depth) / 2)
-  x::Int = floor(idx / 4^depth)
-  println(x)
-  println(y)
+  x::Int = floor((idx-1) / 2^(depth+1))
   return x*2^(depth-1) + y
 end
 
