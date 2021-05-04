@@ -23,7 +23,9 @@ end
 
 function findParentIdx(depth::Int, idx::Int)
   y::Int = ceil(mod1(idx, 2^depth) / 2)
-  x::Int = ceil(idx, 4^depth)
+  x::Int = floor(idx / 4^depth)
+  println(x)
+  println(y)
   return x*2^(depth-1) + y
 end
 
@@ -53,7 +55,7 @@ function findNeighborIdxs(depth::Int, idx::Int)
   # check if not in right column
   if (idx <= num_boxes - column_size)
     push!(neighbors, idx + column_size1)
-
+  end
   # top 3 neighbors
   # check if not in top row
   if (mod1(idx, column_size) != 1)
@@ -87,5 +89,15 @@ function findNeighborIdxs(depth::Int, idx::Int)
 end
 
 function findInteractionIdxs(depth::Int, idx::Int)
+
+  if (depth == 1)
+    return Array{Int, 1}[]
+  end
+
+  parent_idx::Int = findParentIdx(depth, idx)
+  parent_neighbor_idxs::Array{Int, 1} = findNeighborIdxs(depth-1, parent_idx)
+  interacting_idxs::Array{Int, 1} = vcat(findChildrenIdxs.(parent_neighbor_idxs))
+
+  return setdiff(interacting_idxs, getNeighborIdxs(depth, int))
 
 end
