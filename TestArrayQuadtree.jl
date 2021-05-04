@@ -94,6 +94,22 @@ function testFindParentIdx()
 end
 
 
+function testFindChildrenIdxs()
+
+  # depth 1
+  @assert issetequal(findChildrenIdxs(1, 1), [1, 2, 5, 6])
+  @assert issetequal(findChildrenIdxs(1, 2), [3, 4, 7, 8])
+  @assert issetequal(findChildrenIdxs(1, 3), [9, 10, 13, 14])
+  @assert issetequal(findChildrenIdxs(1, 4), [11, 12, 15, 16])
+
+  # some depth 2 tests
+  @assert issetequal(findChildrenIdxs(2, 1), [1, 2, 9, 10])
+  @assert issetequal(findChildrenIdxs(2, 2), [3, 4, 11, 12])
+  @assert issetequal(findChildrenIdxs(2, 6), [19, 20, 27, 28])
+
+end
+
+
 function testFindNeighborIdxs()
   
   # depth 1
@@ -141,9 +157,6 @@ function testFindInteractionIdxs()
   # depth 2
   all_depth2_boxes::Array{Int, 1} = [x for x in 1:16]
   for i in all_depth2_boxes
-    println(i)
-    println(findInteractionIdxs(2, i))
-    println(vcat([i], findNeighborIdxs(2, i)))
     @assert issetequal(findInteractionIdxs(2, i), setdiff(all_depth2_boxes, vcat([i], findNeighborIdxs(2, i))))
   end
 
@@ -152,6 +165,7 @@ end
 
 function runTests()
   testFindParentIdx()
+  testFindChildrenIdxs()
   testFindNeighborIdxs()
   testFindInteractionIdxs()
 end

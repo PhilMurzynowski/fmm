@@ -30,8 +30,8 @@ end
 function findChildrenIdxs(depth::Int, idx::Int)
   # find index for top left child
   # other children are simple offsets from first child
-  y_contribution::Int = mod(idx - 1, 2^depth) * 2
-  x_contribution::Int = floor(idx / 2^depth) * 2^(depth + 1)
+  y_contribution::Int = mod(idx - 1, 2^depth) * 2 + 1 
+  x_contribution::Int = floor((idx - 1) / 2^depth) * 2*2^(depth+1)
   tl_child::Int = x_contribution + y_contribution
   bl_child::Int = tl_child + 1
   tr_child::Int = tl_child + 2^(depth+1)
