@@ -94,7 +94,67 @@ function testFindParentIdx()
 end
 
 
+function testFindNeighborIdxs()
+  
+  # depth 1
+  @assert issetequal(findNeighborIdxs(1, 1), [2, 3, 4])
+  @assert issetequal(findNeighborIdxs(1, 2), [1, 3, 4])
+  @assert issetequal(findNeighborIdxs(1, 3), [2, 1, 4])
+  @assert issetequal(findNeighborIdxs(1, 4), [2, 3, 1])
+
+  # depth 2 tests
+  @assert issetequal(findNeighborIdxs(2, 1), [2, 5, 6])
+  @assert issetequal(findNeighborIdxs(2, 2), [1, 3, 5, 6, 7])
+  @assert issetequal(findNeighborIdxs(2, 3), [2, 4, 6, 7, 8])
+  @assert issetequal(findNeighborIdxs(2, 4), [3, 7, 8])
+  @assert issetequal(findNeighborIdxs(2, 5), [1, 9, 2, 6, 10])
+  @assert issetequal(findNeighborIdxs(2, 6), [1, 2, 3, 5, 7, 9, 10, 11])
+  @assert issetequal(findNeighborIdxs(2, 7), [2, 3, 4, 6, 8, 10, 11, 12])
+  @assert issetequal(findNeighborIdxs(2, 8), [3, 4, 7, 11, 12])
+  @assert issetequal(findNeighborIdxs(2, 9), [5, 6, 10, 13, 14])
+  @assert issetequal(findNeighborIdxs(2, 10), [5, 6, 7, 9, 11, 13, 14, 15])
+  @assert issetequal(findNeighborIdxs(2, 11), [6, 7, 8, 10, 12, 14, 15, 16])
+  @assert issetequal(findNeighborIdxs(2, 12), [7, 8, 11, 15, 16])
+  @assert issetequal(findNeighborIdxs(2, 13), [9, 10, 14])
+  @assert issetequal(findNeighborIdxs(2, 14), [9, 10, 11, 13, 15])
+  @assert issetequal(findNeighborIdxs(2, 15), [10, 11, 12, 14, 16])
+  @assert issetequal(findNeighborIdxs(2, 16), [11, 12, 15])
+
+  # some depth 3 tests
+  @assert issetequal(findNeighborIdxs(3, 1), [2, 9, 10])
+  @assert issetequal(findNeighborIdxs(3, 2), [1, 3, 9, 10, 11])
+  @assert issetequal(findNeighborIdxs(3, 8), [7, 15, 16])
+  @assert issetequal(findNeighborIdxs(3, 21), [12, 13, 14, 20, 22, 28, 29, 30])
+  @assert issetequal(findNeighborIdxs(3, 32), [24, 40, 23, 31, 39])
+
+end
 
 
+function testFindInteractionIdxs()
 
-testFindParentIdx()
+  # depth 1
+  @assert issetequal(findInteractionIdxs(1, 1), [])
+  @assert issetequal(findInteractionIdxs(1, 2), [])
+  @assert issetequal(findInteractionIdxs(1, 3), [])
+  @assert issetequal(findInteractionIdxs(1, 4), [])
+
+  # depth 2
+  all_depth2_boxes::Array{Int, 1} = [x for x in 1:16]
+  for i in all_depth2_boxes
+    println(i)
+    println(findInteractionIdxs(2, i))
+    println(vcat([i], findNeighborIdxs(2, i)))
+    @assert issetequal(findInteractionIdxs(2, i), setdiff(all_depth2_boxes, vcat([i], findNeighborIdxs(2, i))))
+  end
+
+end
+
+
+function runTests()
+  testFindParentIdx()
+  testFindNeighborIdxs()
+  testFindInteractionIdxs()
+end
+
+
+runTests()

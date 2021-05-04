@@ -43,7 +43,7 @@ function findNeighborIdxs(depth::Int, idx::Int)
   column_size::Int = 2^depth
   num_boxes::Int = 4^depth
   #neighbors::Array{Int, 1} = [idx - column_size - 1, idx - column_size, idx - column_size + 1, idx - 1, idx + 1, idx + column_size - 1, idx + column_size, idx + column_size + 1]
-  neigbors::Array{Int, 1} = Array{Int, 1}[]
+  neighbors::Array{Int, 1} = Array{Int, 1}[]
 
   # 2 middle side neighbors
   # check if not in left column
@@ -52,7 +52,7 @@ function findNeighborIdxs(depth::Int, idx::Int)
   end
   # check if not in right column
   if (idx <= num_boxes - column_size)
-    push!(neighbors, idx + column_size1)
+    push!(neighbors, idx + column_size)
   end
   # top 3 neighbors
   # check if not in top row
@@ -94,8 +94,8 @@ function findInteractionIdxs(depth::Int, idx::Int)
 
   parent_idx::Int = findParentIdx(depth, idx)
   parent_neighbor_idxs::Array{Int, 1} = findNeighborIdxs(depth-1, parent_idx)
-  interacting_idxs::Array{Int, 1} = vcat(findChildrenIdxs.(parent_neighbor_idxs))
+  interacting_idxs::Array{Int, 1} = vcat(findChildrenIdxs.(depth-1, parent_neighbor_idxs)...)
 
-  return setdiff(interacting_idxs, getNeighborIdxs(depth, int))
+  return setdiff(interacting_idxs, findNeighborIdxs(depth, idx))
 
 end
