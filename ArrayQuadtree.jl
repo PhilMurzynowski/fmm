@@ -9,8 +9,13 @@ Note: for simplicity not using any notion of depth 0 (one big node), lowest dept
 
 using Plots
 
+# NOTE:
+# may want to try making Box immutable and keeping all mutable portions
+# in some separate location
+# could potentially also store in a DFS ordering!! may be much better for locality
+# DFS ordering seems like a very good idea considering the four color sort!
 
-struct Box
+mutable struct Box
 
   depth::Int
   idx::Int
@@ -25,12 +30,16 @@ struct Box
   interaction_idxs::Array{Int, 1} # aka the interaction list
 
   # indices into point and mass arrays
+  # cannot use this if keeping quadtree immutable and do not want to rebuild each timestep
   start_idx::Int
   final_idx::Int
 
-  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, 0) 
-end
+  # source (notation of f is used for source)
+  f::Float64
 
+  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, 0, 0) 
+
+end
 
 function findParentIdx(depth::Int, idx::Int)
   y::Int = ceil(mod1(idx, 2^depth) / 2)
@@ -119,20 +128,23 @@ function getBoxCenter(depth, idx, side_length)
   return x + y*1im
 end
 
+function getDepthOffsets(max_depth::Int)
+  return vcat([0], [sum([4^i for i in 1:depth]) for depth in 1:max_depth-1])
+end
+
 function buildQuadtree(max_depth::Int, side_length=1.0)
   @assert max_depth >= 1
+  # build as one array to potentially increase cache locality
   num_boxes_in_tree::Int = sum([4^depth for depth in 1:max_depth])
   tree::Array{Box, 1} = Array{Box, 1}(undef, num_boxes_in_tree)
-  depth_offsets = vcat([0], [sum([4^i for i in 1:depth]) for depth in 1:max_depth-1])
+  depth_offsets = getDepthOffsets(max_depth)
   for depth in 1:max_depth 
     for idx in 1:4^depth
       box_center::ComplexF64 = getBoxCenter(depth, idx, side_length)
       tree[depth_offsets[depth] + idx] = Box(depth, idx, box_center)
     end
   end
-
   return tree
-
 end
 
 function displayQuadtree(quadtree::Array{Box, 1}, max_depth::Int, side_length=1.0)
@@ -151,3 +163,50 @@ function displayQuadtree(quadtree::Array{Box, 1}, max_depth::Int, side_length=1.
   gui()
 
 end
+
+function propagateFUp(quadtree::Array{Box, 1}, masses::Array{Float64, 1}, max_depth::Int)
+  depth_offsets::Array{Int, 1} = getDepthOffsets(max_depth)
+  leaf_offset::Int = last(depth_offsets) + 1
+
+  # sum all masses at leaf boxes
+  for global_idx in leaf_offset:length(quadtree)
+    fsum::Float64 = 0
+    @simd for i in quadtree[global_odx].start_idx:quadtree[global_idx].final_idx
+      @inbounds fsum += masses[i]
+    end
+    quadtree[gloabl_idx].f = fsum
+  end
+
+  # propogate up the quadtree from smallest boxes to largest
+  for depth in max_depth:-1:2
+    for idx in 1:4^depth
+      global_idx:Int = 
+      fsum::Float64 = 0
+      for child_idx in tree[global_idx].children_idxs
+        child_global_idx::Int = 
+        fsum += tree[child_global_idx].f
+      end
+      tree[global_idx].f = fsum
+    end
+  end
+
+  """
+  for i in length(depth_offsets):2
+    for global_idx in depth_offsets[i-1]+1:depth_offsets[i]    
+      
+    end
+  end
+  """
+
+  """
+  for depth in 1:max_depth 
+    for idx in 1:4^depth
+      box_center::ComplexF64 = getBoxCenter(depth, idx, side_length)
+      tree[depth_offsets[depth] + idx] = Box(depth, idx, box_center)
+    end
+  end
+  """
+
+end
+
+
