@@ -220,6 +220,23 @@ function colorSortQuadtreePointMasses(box::Box, quadtree::Array{Box, 1}, points:
 
 end
 
+function updateQuadtreePointMasses(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, tree_depth::Int, side_length::Float64=1.0)
+  tree_center::ComplexF64 = side_length/2 + side_length/2*1im
+  first::Int = 1
+  last::Int = length(points)
+  a::Int, c::Int, d::Int = fourColorSort!(points, masses, tree_center, first, last)
+  tl_child::Box = quadtree[1]
+  bl_child::Box = quadtree[2]
+  tr_child::Box = quadtree[3]
+  br_child::Box = quadtree[4]
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, tree_depth, 1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, tree_depth, 1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, tree_depth, 1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, tree_depth, 1, d+1, last)
+end
+
+# NOTE: can optimize slighlty
+# do not need to propagate up past depth 2 I believe
 function propagateFUp(quadtree::Array{Box, 1}, masses::Array{Float64, 1}, max_depth::Int)
   depth_offsets::Array{Int, 1} = getDepthOffsets(max_depth)
   leaf_offset::Int = last(depth_offsets) + 1

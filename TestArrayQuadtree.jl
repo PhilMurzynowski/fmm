@@ -186,11 +186,53 @@ function testGetOffsetOfDepth()
 end
 
 function testPropagateFUp()
-  depth::Int = 3
-  tree::Array{Box, 1} = buildQuadtree(depth)
-  num_particles::Int = 100
-  masses::Array{Float64, 1} = rand(Float64, 100)
-  propagateFUp(tree, masses, depth)
+
+  # NOTE: may need to test deeper if optimize out propagating to depth 1
+  # depth 2
+  tree_depth::Int = 2
+  tree::Array{Box, 1} = buildQuadtree(tree_depth)
+  # set specific masses in specific locations for testing
+  # assuming default side_length = 1.0
+  num_bodies::Int = 7
+  points::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, num_bodies)
+  points[1] = 0.2 + 0.9im # box 1 in depth 2
+  points[2] = 0.1 + 0.6im # box 2 in depth 2
+  points[3] = 0.3 + 0.8im # box 5 in depth 2
+  points[4] = 0.3 + 0.7im # box 6 in depth 2
+  points[5] = 0.2 + 0.4im # box 3 in depth 2
+  points[6] = 0.4 + 0.1im # box 8 in depth 2
+  points[7] = 0.1 + 0.8im # box 1 in depth 2
+  masses::Array{Float64, 1} = [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
+  @assert length(points) == num_bodies
+  @assert length(masses) == num_bodies
+
+  updateQuadtreePointMasses(tree, points, masses, tree_depth)
+  propagateFUp(tree, masses, tree_depth)
+  
+  depth_2_offset::Int = 4
+  # leaves
+  @assert tree[depth_2_offset + 1].f == 65.0 
+  @assert tree[depth_2_offset + 2].f == 2.0 
+  @assert tree[depth_2_offset + 5].f == 4.0 
+  @assert tree[depth_2_offset + 6].f == 8.0 
+  @assert tree[depth_2_offset + 3].f == 16.0 
+  @assert tree[depth_2_offset + 8].f == 32.0 
+  @assert tree[depth_2_offset + 4].f == 0.0 
+  @assert tree[depth_2_offset + 7].f == 0.0 
+  @assert tree[depth_2_offset + 9].f == 0.0 
+  @assert tree[depth_2_offset + 10].f == 0.0 
+  @assert tree[depth_2_offset + 11].f == 0.0 
+  @assert tree[depth_2_offset + 12].f == 0.0 
+  @assert tree[depth_2_offset + 13].f == 0.0 
+  @assert tree[depth_2_offset + 14].f == 0.0 
+  @assert tree[depth_2_offset + 15].f == 0.0 
+  @assert tree[depth_2_offset + 16].f == 0.0 
+  # depth 1
+  @assert tree[1].f == 79.0 
+  @assert tree[2].f == 48.0 
+  @assert tree[3].f == 0.0 
+  @assert tree[4].f == 0.0 
+
 end
 
 function testVisualBuildQuadtree()
@@ -205,9 +247,6 @@ function testVisualQuadtreeColorSortWithMass()
   tree_depth::Int = 4
   side_length::Float64 = 1.0
   quadtree::Array{Box, 1} = buildQuadtree(tree_depth, side_length)
-  # there is no depth 0 so must intially color sort
-  # and past appropriate first and last to depth 1
-  tree_center::ComplexF64 = side_length/2 + side_length/2*1im
   # generate points and masses
   num_bodies::Int = 1000
   points::Array{ComplexF64, 1} = rand(ComplexF64, num_bodies) * side_length
@@ -216,20 +255,9 @@ function testVisualQuadtreeColorSortWithMass()
   #copies for testing
   original_points = copy(points)
   original_masses = copy(masses)
-  
-  
-  first::Int = 1
-  last::Int = num_bodies
-  a::Int, c::Int, d::Int = fourColorSort!(points, masses, tree_center, first, last)
-  tl_child::Box = quadtree[1]
-  bl_child::Box = quadtree[2]
-  tr_child::Box = quadtree[3]
-  br_child::Box = quadtree[4]
-  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, tree_depth, 1, first, a-1)
-  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, tree_depth, 1, a, c)
-  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, tree_depth, 1, c+1, d)
-  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, tree_depth, 1, d+1, last)
 
+  updateQuadtreePointMasses(quadtree, points, masses, tree_depth, side_length)
+  
   # plot
   gr(size = (3000, 1500))
   xlimits = (-0.1, 1.1)
