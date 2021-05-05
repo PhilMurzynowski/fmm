@@ -183,14 +183,15 @@ function displayQuadtree(plot, tree::Array{Box, 1}, points::Array{ComplexF64, 1}
   leaf_offset::Int = length(tree) - 4^tree_depth + 1
 
   for global_idx in leaf_offset:length(tree) 
-    center::ComplexF64 = tree[global_idx].center
+    box::Box = tree[global_idx]
+    center::ComplexF64 = box.center
     plot!(plot, Shape(real(center) .+ [-hbsl, hbsl, hbsl, -hbsl], imag(center) .+ [-hbsl, -hbsl, hbsl, hbsl]), opacity=0.5, leg = false)
     # NOTE: try to optimize out this check
-    if tree.last >= tree.first # if there is more than one particle 
-      box_points = @view points[tree.start_idx:tree.final_idx]
-      x = real.(points)
-      y = imag.(points)
-      box_masses = @view masses[tree.start_idx:tree.final_idx]
+    if box.final_idx >= box.start_idx # if there is more than one particle 
+      box_points = @view points[box.start_idx:box.final_idx]
+      x = real.(box_points)
+      y = imag.(box_points)
+      box_masses = @view masses[box.start_idx:box.final_idx]
       scatter!(plot, (x, y), markersize=10*box_masses, legend=false, label="")
     end
   end
@@ -198,7 +199,7 @@ end
 
 # NOTE: doing this as BFS could potentially have better locality, unless switch quadtree to bfs ordering
 # currently jumping and jumping to higher depth offsets
-function colorSortQuadtreePointMasses(box::Box, quadtree::Array{Box, 1}, points::Array{Float64, 1}, masses::Array{Float64, 1}, max_depth::Int, depth::Int, first::Int, last::Int)
+function colorSortQuadtreePointMasses(box::Box, quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, max_depth::Int, depth::Int, first::Int, last::Int)
 
   if depth == max_depth
     box.start_idx = first

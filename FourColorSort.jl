@@ -17,7 +17,6 @@ end
 function fourColorSort!(array::Array{ComplexF64, 1}, center_value, first, last)
   center_x = real(center_value)
   center_y = imag(center_value)
-  len = length(array)
   # four pointers to the four colors
   a = first
   b = first
@@ -56,7 +55,6 @@ end
 function fourColorSort!(array::Array{Tuple{ComplexF64, Float64}, 1}, center_value, first, last)
   center_x = real(center_value)
   center_y = imag(center_value)
-  len = length(array)
   # four pointers to the four colors
   a = first
   b = first
@@ -97,7 +95,6 @@ end
 function fourColorSort!(points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, center_value, first, last)
   center_x = real(center_value)
   center_y = imag(center_value)
-  len = length(points)
   # four pointers to the four colors
   a = first
   b = first
@@ -132,6 +129,6 @@ function fourColorSort!(points::Array{ComplexF64, 1}, masses::Array{Float64, 1},
       end
     end
   end
-  @assert b == c + 1
+  # @assert b == c + 1
   return (a, c, d)
 end

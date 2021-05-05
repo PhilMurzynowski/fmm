@@ -209,7 +209,7 @@ function testVisualQuadtreeColorSortWithMass()
   # and past appropriate first and last to depth 1
   tree_center::ComplexF64 = side_length/2 + side_length/2*1im
   # generate points and masses
-  num_bodies::Int = 10
+  num_bodies::Int = 1000
   points::Array{ComplexF64, 1} = rand(ComplexF64, num_bodies) * side_length
   masses::Array{Float64, 1} = rand(Float64, num_bodies)
 
@@ -218,7 +218,9 @@ function testVisualQuadtreeColorSortWithMass()
   original_masses = copy(masses)
   
   
-  a::Int, c::Int, d::Int = fourColorSort!(points, masses, tree_center, 1, length(points))
+  first::Int = 1
+  last::Int = num_bodies
+  a::Int, c::Int, d::Int = fourColorSort!(points, masses, tree_center, first, last)
   tl_child::Box = quadtree[1]
   bl_child::Box = quadtree[2]
   tr_child::Box = quadtree[3]
@@ -236,7 +238,7 @@ function testVisualQuadtreeColorSortWithMass()
   # plot original 
   x = real.(original_points)
   y = imag.(original_points)
-  p1 = scatter((x, y), leg=false, label="", markersize=10*masses)
+  p1 = scatter((x, y), leg=false, label="", markersize=10*original_masses)
   xlims!(xlimits)
   ylims!(ylimits)
   
@@ -263,7 +265,7 @@ function runTests()
 end
 
 function runVisualTests()
-  testVisualBuildQuadtree()
+  # testVisualBuildQuadtree()
   testVisualQuadtreeColorSortWithMass()
 end
 
