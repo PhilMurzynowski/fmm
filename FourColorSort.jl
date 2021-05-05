@@ -92,6 +92,8 @@ end
 
 # four color sort with points and associated masses
 # in separate ararys, sorting by points
+# NOTE: modified for column-major order
+# first color is tl, second is bl, third tr, fourth br
 function fourColorSort!(points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, center_value, first, last)
   center_x = real(center_value)
   center_y = imag(center_value)
@@ -102,19 +104,20 @@ function fourColorSort!(points::Array{ComplexF64, 1}, masses::Array{Float64, 1},
   c = last
   d = last
   while (b <= c)
-    if (imag(points[b]) >= center_y)
-      if (real(points[b]) <= center_x)
+    if (real(points[b]) <= center_x)
+      if (imag(points[b]) >= center_y)
+        # top left corner
         swap_elements(points, a, b)
         swap_elements(masses, a, b)
         a += 1
         b += 1
       else
-        # b : top right corner
+        # b : bottom left corner
         b += 1
       end
     else 
-      if (real(points[b]) <= center_x)
-        # c : bottom left corner
+      if (imag(points[b]) >= center_y)
+        # c : top right corner 
         swap_elements(points, b, c)
         swap_elements(masses, b, c)
         c -= 1

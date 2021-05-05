@@ -178,6 +178,13 @@ function testGetBoxCenter()
 
 end
 
+function testGetOffsetOfDepth()
+  @assert getOffsetOfDepth(1) == 0
+  @assert getOffsetOfDepth(2) == 4
+  @assert getOffsetOfDepth(3) == 20
+  @assert getOffsetOfDepth(4) == 84
+end
+
 function testPropagateFUp()
   depth::Int = 3
   tree::Array{Box, 1} = buildQuadtree(depth)
@@ -200,6 +207,7 @@ function runTests()
   testFindNeighborIdxs()
   testFindInteractionIdxs()
   testGetBoxCenter()
+  testGetOffsetOfDepth()
   testPropagateFUp()
 end
 

@@ -135,6 +135,14 @@ function getDepthOffsets(max_depth::Int)
   return vcat([0], [sum([4^i for i in 1:depth]) for depth in 1:max_depth-1])
 end
 
+function getOffsetOfDepth(depth::Int)
+  if depth == 1
+    return 0
+  else 
+    return sum([4^i for i in 1:depth-1])
+  end
+end
+
 function buildQuadtree(max_depth::Int, side_length=1.0)
   @assert max_depth >= 1
   # build as one array to potentially increase cache locality
@@ -166,7 +174,26 @@ function displayQuadtree(quadtree::Array{Box, 1}, max_depth::Int, side_length=1.
   gui()
 end
 
-function colorSortQuadtreePointMasess(quadtree::Array{Box, 1}, points::Array{Float64, 1}, masses::Array{Float64, 1})
+# NOTE: doing this as BFS could potentially have better locality, unless switch quadtree to bfs ordering
+# currently jumping and jumping to higher depth offsets
+function colorSortQuadtreePointMasess(box::Box, quadtree::Array{Box, 1}, points::Array{Float64, 1}, masses::Array{Float64, 1}, max_depth::Int, depth::Int, first::Int, last::Int)
+
+  if depth == max_depth
+    box.start_idx = first
+    box.final_idx = last
+    return
+  end
+
+  a::Int, c::Int, d::Int = fourColorSort!(points, masses, box.center, first, last)
+  depth_offset::Int = getOffsetOfDepth(depth+1)
+  tl_child::Box = quadtree[depth_offset + box.children_idxs[1]]
+  bl_child::Box = quadtree[depth_offset + box.children_idxs[2]]
+  tr_child::Box = quadtree[depth_offset + box.children_idxs[3]]
+  br_child::Box = quadtree[depth_offset + box.children_idxs[4]]
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, massess, max_depth, depth+1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, massess, max_depth, depth+1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, massess, max_depth, depth+1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, massess, max_depth, depth+1, d+1, last)
 
 end
 

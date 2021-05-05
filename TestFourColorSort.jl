@@ -116,6 +116,8 @@ function edgecaseVisualTest()
   gui()
 end
 
+# TODO add test for column-major ordering sort
+
 
 """ tests run """
 
