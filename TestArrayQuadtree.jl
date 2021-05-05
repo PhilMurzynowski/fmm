@@ -197,8 +197,59 @@ function testVisualBuildQuadtree()
   
   depth::Int = 4
   tree::Array{Box, 1} = buildQuadtree(depth)
-  displayQuadtree(tree, depth)
+  displayQuadtreeBoxes(tree, depth)
 
+end
+
+function testVisualQuadtreeColorSortWithMass()
+  tree_depth::Int = 4
+  side_length::Float64 = 1.0
+  quadtree::Array{Box, 1} = buildQuadtree(tree_depth, side_length)
+  # there is no depth 0 so must intially color sort
+  # and past appropriate first and last to depth 1
+  tree_center::ComplexF64 = side_length/2 + side_length/2*1im
+  # generate points and masses
+  num_bodies::Int = 10
+  points::Array{ComplexF64, 1} = rand(ComplexF64, num_bodies) * side_length
+  masses::Array{Float64, 1} = rand(Float64, num_bodies)
+
+  #copies for testing
+  original_points = copy(points)
+  original_masses = copy(masses)
+  
+  
+  a::Int, c::Int, d::Int = fourColorSort!(points, masses, tree_center, 1, length(points))
+  tl_child::Box = quadtree[1]
+  bl_child::Box = quadtree[2]
+  tr_child::Box = quadtree[3]
+  br_child::Box = quadtree[4]
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, tree_depth, 1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, tree_depth, 1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, tree_depth, 1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, tree_depth, 1, d+1, last)
+
+  # plot
+  gr(size = (3000, 1500))
+  xlimits = (-0.1, 1.1)
+  ylimits = xlimits
+  l = @layout [a  b]
+  # plot original 
+  x = real.(original_points)
+  y = imag.(original_points)
+  p1 = scatter((x, y), leg=false, label="", markersize=10*masses)
+  xlims!(xlimits)
+  ylims!(ylimits)
+  
+  # plot quadtree
+  p2 = plot()
+  displayQuadtree(p2, quadtree, points, masses, tree_depth, side_length)
+  
+  # show plot
+  plot(p1, p2, layout=l)
+  xlims!(xlimits)
+  ylims!(ylimits)
+  gui()
+  
 end
 
 function runTests()
@@ -213,6 +264,7 @@ end
 
 function runVisualTests()
   testVisualBuildQuadtree()
+  testVisualQuadtreeColorSortWithMass()
 end
 
 

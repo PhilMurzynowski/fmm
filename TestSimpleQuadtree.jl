@@ -66,7 +66,7 @@ function visualTestAllPointsWithMass()
   dim = 0.5
   depth = 4
   gr(size = (3000, 1500))
-  xlimits = (-0.5, 0,5)
+  xlimits = (-0.5, 0.5)
   ylimits = xlimits
   l = @layout [a  b]
   points = first.(array)

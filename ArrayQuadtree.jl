@@ -158,7 +158,7 @@ function buildQuadtree(max_depth::Int, side_length=1.0)
   return tree
 end
 
-function displayQuadtree(quadtree::Array{Box, 1}, max_depth::Int, side_length=1.0)
+function displayQuadtreeBoxes(quadtree::Array{Box, 1}, max_depth::Int, side_length=1.0)
   gr(size=(1000, 1000))
   p = plot()
   bsl = side_length / 2^max_depth # box side length
@@ -174,9 +174,31 @@ function displayQuadtree(quadtree::Array{Box, 1}, max_depth::Int, side_length=1.
   gui()
 end
 
+# shows leaf boxes and points with mass
+function displayQuadtree(plot, tree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, tree_depth::Int, side_length=1.0)
+  bsl = side_length / 2^tree_depth # box side length
+  hbsl = bsl / 2
+
+  # only plot at leaf level
+  leaf_offset::Int = length(tree) - 4^tree_depth + 1
+
+  for global_idx in leaf_offset:length(tree) 
+    center::ComplexF64 = tree[global_idx].center
+    plot!(plot, Shape(real(center) .+ [-hbsl, hbsl, hbsl, -hbsl], imag(center) .+ [-hbsl, -hbsl, hbsl, hbsl]), opacity=0.5, leg = false)
+    # NOTE: try to optimize out this check
+    if tree.last >= tree.first # if there is more than one particle 
+      box_points = @view points[tree.start_idx:tree.final_idx]
+      x = real.(points)
+      y = imag.(points)
+      box_masses = @view masses[tree.start_idx:tree.final_idx]
+      scatter!(plot, (x, y), markersize=10*box_masses, legend=false, label="")
+    end
+  end
+end
+
 # NOTE: doing this as BFS could potentially have better locality, unless switch quadtree to bfs ordering
 # currently jumping and jumping to higher depth offsets
-function colorSortQuadtreePointMasess(box::Box, quadtree::Array{Box, 1}, points::Array{Float64, 1}, masses::Array{Float64, 1}, max_depth::Int, depth::Int, first::Int, last::Int)
+function colorSortQuadtreePointMasses(box::Box, quadtree::Array{Box, 1}, points::Array{Float64, 1}, masses::Array{Float64, 1}, max_depth::Int, depth::Int, first::Int, last::Int)
 
   if depth == max_depth
     box.start_idx = first
@@ -190,10 +212,10 @@ function colorSortQuadtreePointMasess(box::Box, quadtree::Array{Box, 1}, points:
   bl_child::Box = quadtree[depth_offset + box.children_idxs[2]]
   tr_child::Box = quadtree[depth_offset + box.children_idxs[3]]
   br_child::Box = quadtree[depth_offset + box.children_idxs[4]]
-  colorSortQuadtreePointMasses(tl_child, quadtree, points, massess, max_depth, depth+1, first, a-1)
-  colorSortQuadtreePointMasses(bl_child, quadtree, points, massess, max_depth, depth+1, a, c)
-  colorSortQuadtreePointMasses(tr_child, quadtree, points, massess, max_depth, depth+1, c+1, d)
-  colorSortQuadtreePointMasses(br_child, quadtree, points, massess, max_depth, depth+1, d+1, last)
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, max_depth, depth+1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, max_depth, depth+1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, max_depth, depth+1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, max_depth, depth+1, d+1, last)
 
 end
 
