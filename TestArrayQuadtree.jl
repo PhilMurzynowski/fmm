@@ -178,6 +178,14 @@ function testGetBoxCenter()
 
 end
 
+function testPropagateFUp()
+  depth::Int = 3
+  tree::Array{Box, 1} = buildQuadtree(depth)
+  num_particles::Int = 100
+  masses::Array{Float64, 1} = rand(Float64, 100)
+  propagateFUp(tree, masses, depth)
+end
+
 function testVisualBuildQuadtree()
   
   depth::Int = 4
@@ -192,6 +200,7 @@ function runTests()
   testFindNeighborIdxs()
   testFindInteractionIdxs()
   testGetBoxCenter()
+  testPropagateFUp()
 end
 
 function runVisualTests()

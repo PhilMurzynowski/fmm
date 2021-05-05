@@ -7,6 +7,9 @@ Note: for simplicity not using any notion of depth 0 (one big node), lowest dept
 
 """
 
+include("FourColorSort.jl")
+
+
 using Plots
 
 # NOTE:
@@ -161,51 +164,35 @@ function displayQuadtree(quadtree::Array{Box, 1}, max_depth::Int, side_length=1.
     plot!(p, Shape(real(center) .+ [-hbsl, hbsl, hbsl, -hbsl], imag(center) .+ [-hbsl, -hbsl, hbsl, hbsl]), opacity=0.5, leg = false)
   end
   gui()
+end
+
+function colorSortQuadtreePointMasess(quadtree::Array{Box, 1}, points::Array{Float64, 1}, masses::Array{Float64, 1})
 
 end
 
 function propagateFUp(quadtree::Array{Box, 1}, masses::Array{Float64, 1}, max_depth::Int)
   depth_offsets::Array{Int, 1} = getDepthOffsets(max_depth)
   leaf_offset::Int = last(depth_offsets) + 1
-
   # sum all masses at leaf boxes
   for global_idx in leaf_offset:length(quadtree)
     fsum::Float64 = 0
-    @simd for i in quadtree[global_odx].start_idx:quadtree[global_idx].final_idx
+    @simd for i in quadtree[global_idx].start_idx:quadtree[global_idx].final_idx
       @inbounds fsum += masses[i]
     end
-    quadtree[gloabl_idx].f = fsum
+    quadtree[global_idx].f = fsum
   end
-
   # propogate up the quadtree from smallest boxes to largest
-  for depth in max_depth:-1:2
+  for depth in max_depth-1:-1:1
     for idx in 1:4^depth
-      global_idx:Int = 
+      global_idx::Int = depth_offsets[depth] + idx
       fsum::Float64 = 0
-      for child_idx in tree[global_idx].children_idxs
-        child_global_idx::Int = 
-        fsum += tree[child_global_idx].f
+      for child_idx in quadtree[global_idx].children_idxs
+        child_global_idx::Int = depth_offsets[depth+1] + child_idx
+        fsum += quadtree[child_global_idx].f
       end
-      tree[global_idx].f = fsum
+      quadtree[global_idx].f = fsum
     end
   end
-
-  """
-  for i in length(depth_offsets):2
-    for global_idx in depth_offsets[i-1]+1:depth_offsets[i]    
-      
-    end
-  end
-  """
-
-  """
-  for depth in 1:max_depth 
-    for idx in 1:4^depth
-      box_center::ComplexF64 = getBoxCenter(depth, idx, side_length)
-      tree[depth_offsets[depth] + idx] = Box(depth, idx, box_center)
-    end
-  end
-  """
 
 end
 
