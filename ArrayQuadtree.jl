@@ -4,6 +4,7 @@ Instead of mainly relying on recursive data structure,
 store each level of quadtree in its own array.
 
 Note: for simplicity not using any notion of depth 0 (one big node), lowest depth is 1 (space is split into 4 boxes)
+      minimum depth required is 2
 
 """
 
@@ -39,8 +40,10 @@ mutable struct Box
 
   # source (notation of f is used for source)
   f::Float64
+  # potentual (notation u is used for potential)
+  u::Float64
 
-  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, 0, 0) 
+  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, 0, 0, 0) 
 
 end
 
@@ -263,4 +266,25 @@ function propagateFUp(quadtree::Array{Box, 1}, masses::Array{Float64, 1}, max_de
 
 end
 
+# NOTE: may make sense to be check ordering of interaction list for good locality
+# Can also potentially take advantage of symmetry?
+function computeBoxPotentials(quadtree::Array{Box, 1}, tree_depth::Int, kernelFunction::Function)
+  depth_offsets::Array{Int, 1} = getDepthOffsets(max_depth)
+  for depth in 2:tree_depth
+    for global_idx in depth_offsets[depth]+1:depth_offsets[depth+1]
+      box_b::Box = quadtree[global_idx]
+      for interacting_idx in box_a.interaction_idxs
+        box_a = quadtree[depth_offsets[depth] + interacting_idx]
+        box_a.u += kernelFunction(box_a.center, box_b.center)*box_b.f
+      end
+    end
+  end
+end
 
+function propagateDownPotential()
+
+end
+
+function computeNeighborPotentialContribution()
+
+end
