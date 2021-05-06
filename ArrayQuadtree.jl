@@ -281,10 +281,45 @@ function computeBoxPotentials(quadtree::Array{Box, 1}, tree_depth::Int, kernelFu
   end
 end
 
-function propagateDownPotential()
-
+function propagateDownPotential(quadtree::Array{Box, 1}, us::Array{Float64, 1}, tree_depth::Int)
+  depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
+  for depth in 2:tree_depth-1
+    for global_idx in depth_offsets[depth]+1:depth_offsets[depth+1]
+      box::Box = quadtree[global_idx]
+      for child_idx in box.children_idxs
+        child_global_idx::Int = depth_offsets[depth+1] + child_idx
+        child::Box = quadtree[child_global_idx]
+        child.u += box.u
+      end
+    end
+  end
+  # propagate to individual bodies
+  leaf_offset::Int = last(depth_offsets)
+  for global_idx in leaf_offset+1:leaf_offset+4^tree_depth
+    # TODO: check if simd makes sense here
+    leaf_box::Box = quadtree[global_idx]
+    @simd for i in leaf_box.start_idx:leaf_box.final_idx
+      @inbounds us[i] += leaf_box.u
+    end
+  end
 end
 
-function computeNeighborPotentialContribution()
-
+# NOTE: potentially take advantage of symmetry
+# All pairs computation
+# QUESTION: should this loop ordering be switched
+#   This is likely very important especially since working with separate arrays
+#   Large influence on cache misses
+function computeNeighborPotentialContribution(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, us::Array{Float64, 1}, tree_depth::Int, kernelFunction::Function)
+  leaf_offset::Int = getOffsetOfDepth(tree_depth)
+  for global_idx in leaf_offset+1:leaf_offset+4^tree_depth
+    box::Box = quadtree[global_idx]
+    for neighbor_idx in box_a.neighbor_idxs
+      neighbor_box::Box = quadtree[leaf_offset+neighbor_idx] 
+      for i in box.start_idx:box.final_idx
+        for j in neighbor_box.start_idx:neighbor_box.final_idx
+          us[i] += kernelFunction(points[i], points[j])*masses[j]
+        end
+      end
+    end
+  end
 end
