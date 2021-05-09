@@ -12,6 +12,7 @@ include("FourColorSort.jl")
 
 
 using Plots
+using Printf
 
 # NOTE:
 # may want to try making Box immutable and keeping all mutable portions
@@ -43,7 +44,8 @@ mutable struct Box
   # potentual (notation u is used for potential)
   u::Float64
 
-  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, 0, 0, 0) 
+  # initialize start, final as 0, -1. -1 chosen so final < start
+  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, -1, 0, 0) 
 
 end
 
@@ -132,6 +134,10 @@ function getBoxCenter(depth, idx, side_length)
   x::Float64 = floor((idx - 1) / 2^depth) * box_side_length + half_box_side_length 
   y::Float64 = (2^depth - mod1(idx, 2^depth)) * box_side_length + half_box_side_length
   return x + y*1im
+end
+
+function boxHasPoints(box::Box)
+  return box.final_idx >= box.start_idx
 end
 
 function getDepthOffsets(max_depth::Int)

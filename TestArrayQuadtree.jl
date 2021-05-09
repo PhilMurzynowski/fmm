@@ -235,6 +235,106 @@ function testPropagateFUp()
 
 end
 
+function testPropagateDownPotential()
+  # test for depth 3 tree
+  # propagate down from depth 2 to depth 3 boxes
+  
+  tree_depth::Int = 3
+  quadtree::Array{Box, 1} = buildQuadtree(tree_depth)
+  # set specific masses in specific locations for testing
+  # assuming default side_length = 1.0
+  num_bodies::Int = 7
+  points::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, num_bodies)
+  points[1] = 0.2 + 0.9im # box 9 in depth 3
+  points[2] = 0.1 + 0.6im # box 4 in depth 3
+  points[3] = 0.3 + 0.8im # box 18 in depth 3
+  points[4] = 0.3 + 0.7im # box 19 in depth 3
+  points[5] = 0.2 + 0.4im # box 13 in depth 3
+  points[6] = 0.4 + 0.1im # box 32 in depth 3
+  points[7] = 0.1 + 0.8im # box 2 in depth 3
+  # masses are not relevant for this test
+  masses::Array{Float64, 1} = [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0]
+  @assert length(points) == num_bodies
+  @assert length(masses) == num_bodies
+  updateQuadtreePointMasses(quadtree, points, masses, tree_depth)
+
+  # array for potential of each point
+  us::Array{Float64, 1} = zeros(Float64, num_bodies)
+
+  # artificially set potentials in boxs depth 2 and higher
+  # depth 3
+  for i in 1:4^3
+    global_idx::Int = 20+i
+    quadtree[global_idx].u = 2^(i-1)
+  end
+  # depth 2
+  for i in 1:4^2
+    global_idx::Int = 4+i
+    quadtree[global_idx].u = 2^(i+4^3-1)
+  end
+  propagateDownPotential(quadtree, us, tree_depth)
+
+  # depth 2 should be unaffected
+  for i in 1:4^2
+    global_idx::Int = 4+i
+    @assert quadtree[global_idx].u == 2^(i+4^3-1)
+  end
+  # depth 3 should have contribution from depth 2
+  for i in 1:4^3
+    global_idx::Int = 20+i
+    box = quadtree[global_idx]
+    @assert box.u == 2^(i-1) + quadtree[4+box.parent_idx].u
+  end
+  
+  # check right boxes have or don't have points
+  for i in 1:4^3
+    global_idx::Int = 20+i
+    box = quadtree[global_idx]
+    #@printf "i: %d\n" i
+    #@printf "box.start_idx: %d, box.final_idx: %d\n" box.start_idx box.final_idx
+    if (i == 9 ||
+        i == 4 ||
+        i == 18 ||
+        i == 19 ||
+        i == 13 ||
+        i == 32 ||
+        i == 2)
+      @assert boxHasPoints(box)
+    else 
+      @assert !boxHasPoints(box)
+    end
+  end
+
+  # individual potential tests
+  for i in 1:4^3
+    global_idx::Int = 20+i
+    box = quadtree[global_idx]
+    #@printf "i: %d\n" i
+    #@printf "box.start_idx: %d, box.final_idx: %d\n" box.start_idx box.final_idx
+    if (i == 9 ||
+        i == 4 ||
+        i == 18 ||
+        i == 19 ||
+        i == 13 ||
+        i == 32 ||
+        i == 2)
+      for idx in box.start_idx:box.final_idx
+        @assert us[idx] == box.u
+      end
+    end
+  end
+
+
+end
+
+function testComputeNeighborPotentialContribution()
+
+end
+
+function testFullTimestepComputation()
+
+end
+
 function testVisualBuildQuadtree()
   
   depth::Int = 4
@@ -290,6 +390,9 @@ function runTests()
   testGetBoxCenter()
   testGetOffsetOfDepth()
   testPropagateFUp()
+  testPropagateDownPotential()
+  testComputeNeighborPotentialContribution()
+  testFullTimestepComputation()
 end
 
 function runVisualTests()
