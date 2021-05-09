@@ -88,7 +88,7 @@ end
 """ M2L : Multipole to Local """
 
 
-function M2L
+function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
   # Add contribution of boxes in interaction list to multipole expansion of each box
   # Need to use separate array b as cannot update a mid computation as that would affect
   # later box interaction computations
@@ -124,7 +124,7 @@ end
 """ L2L : Local to Local """
 
 
-function L2L
+function L2L(quadtree::Array{Box, 1}, tree_depth::Int)
   # propogate down information to children
   # do for every level above leaf level
   depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
@@ -148,5 +148,17 @@ function L2L
     end
   end
 end
+
+
+""" L2P : Local to Particle """
+
+
+function L2P(quadtree::Array{Box, 1}, tree_depth::Int)
+  # Pass to particles the local information
+end
+
+
+
+
 
 
