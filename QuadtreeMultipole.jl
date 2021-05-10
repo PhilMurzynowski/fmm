@@ -35,11 +35,16 @@ function P2M(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
       relevant_points = @view points[box.start_idx:box.final_idx]
       relevant_masses = @view masses[box.start_idx:box.final_idx]
       box.a[1] = sum(relevant_masses)
+      println(global_idx - leaf_offset)
+      @printf "center: %f + %fi\n" real(box.center) imag(box.center)
+      @printf "%f + %fi, " real(box.a[1]) imag(box.a[1])
       for i in 2:P+1
         # subtract box center to form multipole expansion about box center
         k = i - 1
         box.a[i] = -1/k*sum(((relevant_points .- box.center).^k).*relevant_masses)
+        @printf "%f + %fi, " real(box.a[i]) imag(box.a[i])
       end
+      @printf "\n"
     else 
       box.a = zeros(P+1)
     end
@@ -71,7 +76,7 @@ function M2M(quadtree::Array{Box, 1}, tree_depth::Int)
           parent_box.a[i] -= 1/l*child_box.a[1]*(child_box.center - parent_box.center).^l
           for k in 1:l
             j = k + 1
-            parent_box.a[i] += binomial(l, k)*child_box.a[j]*(child_box.center - parent_box.center).^(l-k)
+            parent_box.a[i] += binomial(l-1, k-1)*child_box.a[j]*(child_box.center - parent_box.center).^(l-k)
           end
         end
       end
@@ -112,7 +117,7 @@ function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
           # first term
           box.b[j] += -1/l*inter_box.a[1]*(inter_box.center - box.center)^l 
           # summation term
-          box.b[j] += sum((binomial.(Ps.+l, l+1)./((inter_box.center - box.center).^Ps).*csa))
+          box.b[j] += sum((binomial.(Ps.+l.-1, l-1)./((inter_box.center - box.center).^Ps).*csa))
         end
       end
     end
@@ -139,7 +144,7 @@ function L2L(quadtree::Array{Box, 1}, tree_depth::Int)
         for l in 0:P
           i = l+1
           for k in l:P
-            j = k+1                         # binomial(k+1, l+1) ??
+            j = k+1
             child_box.a[i] += parent_box.b[j]*binomial(k,l)*(child_box.center - parent_box.center)^(k-l);
           end
         end
