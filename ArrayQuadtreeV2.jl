@@ -3,10 +3,10 @@
 Instead of mainly relying on recursive data structure,
 store each level of quadtree in its own array.
 
-Note: for simplicity not using any notion of depth 0 (one big node), lowest depth is 1 (space is split into 4 boxes)
+NOTE: for simplicity not using any notion of depth 0 (one big node), lowest depth is 1 (space is split into 4 boxes)
       minimum depth required is 2
 
-DEPRECATED: used for early quadtree testing, not compatible with multipole expansion information
+NOTE: V2 is the updated version designed to be compatible with multipole expansions
 
 """
 
@@ -15,6 +15,13 @@ include("FourColorSort.jl")
 
 using Plots
 using Printf
+
+
+# number of additional coefficients of multipole expansion to keep
+# total number of coefficients will be P + 1
+# NOTE: high number of coeff can lead to binomal func overflowing
+const P = 30
+
 
 # NOTE:
 # may want to try making Box immutable and keeping all mutable portions
@@ -41,13 +48,13 @@ mutable struct Box
   start_idx::Int
   final_idx::Int
 
-  # source (notation of f is used for source)
-  f::Float64
-  # potentual (notation u is used for potential)
-  u::Float64
+  # multipole expansion information
+  # more than one array is used as need temporary space
+  a::Array{ComplexF64, 1}
+  b::Array{ComplexF64, 1}
 
   # initialize start, final as 0, -1. -1 chosen so final < start
-  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, -1, 0, 0) 
+  Box(depth::Int, idx::Int, center::ComplexF64) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, -1, zeros(ComplexF64, P+1), zeros(ComplexF64, P+1)) 
 
 end
 
@@ -244,90 +251,4 @@ function updateQuadtreePointMasses(quadtree::Array{Box, 1}, points::Array{Comple
   colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, tree_depth, 1, a, c)
   colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, tree_depth, 1, c+1, d)
   colorSortQuadtreePointMasses(br_child, quadtree, points, masses, tree_depth, 1, d+1, last)
-end
-
-# NOTE: can optimize slighlty
-# do not need to propagate up past depth 2 I believe
-function propagateFUp(quadtree::Array{Box, 1}, masses::Array{Float64, 1}, max_depth::Int)
-  depth_offsets::Array{Int, 1} = getDepthOffsets(max_depth)
-  leaf_offset::Int = last(depth_offsets) + 1
-  # sum all masses at leaf boxes
-  for global_idx in leaf_offset:length(quadtree)
-    fsum::Float64 = 0
-    @simd for i in quadtree[global_idx].start_idx:quadtree[global_idx].final_idx
-      @inbounds fsum += masses[i]
-    end
-    quadtree[global_idx].f = fsum
-  end
-  # propogate up the quadtree from smallest boxes to largest
-  for depth in max_depth-1:-1:1
-    for idx in 1:4^depth
-      global_idx::Int = depth_offsets[depth] + idx
-      fsum::Float64 = 0
-      for child_idx in quadtree[global_idx].children_idxs
-        child_global_idx::Int = depth_offsets[depth+1] + child_idx
-        fsum += quadtree[child_global_idx].f
-      end
-      quadtree[global_idx].f = fsum
-    end
-  end
-
-end
-
-# NOTE: may make sense to be check ordering of interaction list for good locality
-# Can also potentially take advantage of symmetry?
-function computeBoxPotentials(quadtree::Array{Box, 1}, tree_depth::Int, kernelFunction::Function)
-  depth_offsets::Array{Int, 1} = getDepthOffsets(max_depth)
-  for depth in 2:tree_depth
-    for global_idx in depth_offsets[depth]+1:depth_offsets[depth+1]
-      box_b::Box = quadtree[global_idx]
-      for interacting_idx in box_a.interaction_idxs
-        box_a = quadtree[depth_offsets[depth] + interacting_idx]
-        box_a.u += kernelFunction(box_a.center, box_b.center)*box_b.f
-      end
-    end
-  end
-end
-
-function propagateDownPotential(quadtree::Array{Box, 1}, us::Array{Float64, 1}, tree_depth::Int)
-  depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
-  for depth in 2:tree_depth-1
-    for global_idx in depth_offsets[depth]+1:depth_offsets[depth+1]
-      box::Box = quadtree[global_idx]
-      for child_idx in box.children_idxs
-        child_global_idx::Int = depth_offsets[depth+1] + child_idx
-        child::Box = quadtree[child_global_idx]
-        child.u += box.u
-      end
-    end
-  end
-  # propagate to individual bodies
-  leaf_offset::Int = last(depth_offsets)
-  for global_idx in leaf_offset+1:leaf_offset+4^tree_depth
-    # TODO: check if simd makes sense here
-    leaf_box::Box = quadtree[global_idx]
-    @simd for i in leaf_box.start_idx:leaf_box.final_idx
-      @inbounds us[i] += leaf_box.u
-    end
-  end
-end
-
-# NOTE: potentially take advantage of symmetry
-# All pairs computation
-# QUESTION: should this loop ordering be switched
-#   This is likely very important especially since working with separate arrays
-#   Large influence on cache misses
-function computeNeighborPotentialContribution(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, us::Array{Float64, 1}, tree_depth::Int, kernelFunction::Function)
-  leaf_offset::Int = getOffsetOfDepth(tree_depth)
-  for global_idx in leaf_offset+1:leaf_offset+4^tree_depth
-    box::Box = quadtree[global_idx]
-    for neighbor_idx in box_a.neighbor_idxs
-      neighbor_box::Box = quadtree[leaf_offset+neighbor_idx] 
-      for i in box.start_idx:box.final_idx
-        for j in neighbor_box.start_idx:neighbor_box.final_idx
-          us[i] += kernelFunction(points[i], points[j])*masses[j]
-        end
-      end
-    end
-  end
 end

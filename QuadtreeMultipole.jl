@@ -8,11 +8,10 @@ Downward: M2L, L2L, ??, neighbor contribution
 
 """
 
-include("ArrayQuadtree.jl")
+include("ArrayQuadtreeV2.jl")
 
-# number of additional coefficients of multipole expansion to keep
-# total number of coefficients will be P + 1
-const P = 50
+
+# helper constants
 const Ps = [x for x in 1:P]
 const Ps_idxs = [x for x in 2:P+1]
 
@@ -68,7 +67,7 @@ function M2M(quadtree::Array{Box, 1}, tree_depth::Int)
         child_box::Box = quadtree[child_global_idx]
         parent_box.a[1] += child_box.a[1]
         for l in 1:P
-          i = l + i
+          i = l + 1
           parent_box.a[i] -= 1/l*child_box.a[1]*(child_box.center - parent_box.center).^l
           for k in 1:l
             j = k + 1
@@ -97,23 +96,23 @@ function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
   Ps_idxs = 2:P+1
   # propogate all the way to the leaf level (inclusive)
   for depth in 2:tree_depth
-    for global_idx in depth_offsets[depth]+1:depth_offsets[depth+1]
+    for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
       box::Box = quadtree[global_idx]
       box.b .= zero(box.b[1])
       for interaction_idx in box.interaction_idxs
         # interacting box
-        inter_box::Box = depth_offsets[depth] + interaction_idx
+        inter_box::Box = quadtree[depth_offsets[depth] + interaction_idx]
         # b0 (1-indexing)
         box.b[1] += log(box.center - inter_box.center)*inter_box.a[1]
         # common sub array 
         csa = (-1).^Ps.*inter_box.a[Ps_idxs]./((inter_box.center - box.center).^Ps)
-        box.b[1] += sum(cse)
+        box.b[1] += sum(csa)
         for l in 1:P
           j = l + 1
           # first term
           box.b[j] += -1/l*inter_box.a[1]*(inter_box.center - box.center)^l 
           # summation term
-          box.b[j] += sum((binomial.(Ps+l, l+1)./((inter_box.center - box.center).^Ps).*cse))
+          box.b[j] += sum((binomial.(Ps.+l, l+1)./((inter_box.center - box.center).^Ps).*csa))
         end
       end
     end
@@ -129,9 +128,9 @@ function L2L(quadtree::Array{Box, 1}, tree_depth::Int)
   # do for every level above leaf level
   depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
   for depth in 2:tree_depth-1
-    for global_idx in depth_offsets[depth]+1:depth_offsets[depth+1]
+    for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
       parent_box::Box = quadtree[global_idx]
-      for child_idx in box.children_idxs
+      for child_idx in parent_box.children_idxs
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
         child_box::Box = quadtree[child_global_idx]
         # can reuse a again as have completed addition of contributions from
@@ -160,13 +159,20 @@ function L2P(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, potentials::
   for global_idx in leaf_offset+1:length(quadtree)
     box::Box = quadtree[global_idx]
     if (boxHasPoints(box))
-      relevant_potentials = @view potentials[box.start_idx:box.final_idx]
-      relevant_points = @view points[box.start_idx:box.final_idx]
       # can potentially reorder looping when thinking about vectorization
       # this should be good vectorization but double check
-      for k in 0:P
-        relevant_potentials .+= ((relevant_points .- box.center).^k .* box.a)
-      end
+      #relevant_potentials = @view potentials[box.start_idx:box.final_idx]
+      #relevant_points = @view points[box.start_idx:box.final_idx]
+      #for k in 0:P
+      #  # likely want to perform an outer product here and sum along one dimension
+      #  #relevant_potentials += sum(((relevant_points .- box.center).^k .* box.a))
+      #    for i = Box(ibox_global).particlelist
+      for idx in box.start_idx:box.final_idx
+        for k = 0:P
+          j = k + 1
+          potentials[idx] += box.a[j]*(points[idx] - box.center)^k;
+        end
+      end        
     end
   end
 end
@@ -194,23 +200,25 @@ function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
       
       # contribution from within same box
       # zero out computation with of body with itself as log(0) = -Inf
-      kernel_mtx::Array{ComplexF64, 2} = log(relevant_points .- relevant_points')
+      # this is also 0 if only one point in box
+      kernel_mtx::Array{ComplexF64, 2} = log.(relevant_points .- relevant_points')
       foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(relevant_points))
       # can't do simple dot product unfortunately
-      relevant_potentials .+= sum(kernel_mtx.*relevant_masses, dims=2)
+      relevant_potentials .+= vec(sum(kernel_mtx.*relevant_masses, dims=2))
       
       # contribution from neighbor boxes
       for neighbor_idx in box.neighbor_idxs
-         neighbor_box::Box = leaf_offset + neighbor_idx
+        neighbor_box::Box = quadtree[leaf_offset + neighbor_idx]
          # evaluate whether branching might be a bigger hit to performance
          # when assuming uniform distrubition should almost always have points
-         #if boxHasPoints(neighbor_box)
-         # construct matrix from set of points in box 
-         # CHECK 
-         neighbor_points = @view points[neighbor_box.start_idx:neighbor_box.final_idx]
-         neighbor_masses = @view masses[neighbor_box.start_idx:neighbor_box.final_idx]
-         relevant_potentials .+= sum(log.(relevant_points' .- neighbor_points).*neighbor_masses, dims=2)
-         #end
+         # but also want to avoid zero dimensional arrays
+         if boxHasPoints(neighbor_box)
+           # construct matrix from set of points in box 
+           # CHECK 
+           neighbor_points = @view points[neighbor_box.start_idx:neighbor_box.final_idx]
+           neighbor_masses = @view masses[neighbor_box.start_idx:neighbor_box.final_idx]
+           relevant_potentials .+= vec(sum(log.(relevant_points' .- neighbor_points).*neighbor_masses, dims=2))
+         end
       end
 
     end
