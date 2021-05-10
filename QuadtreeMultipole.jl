@@ -172,7 +172,22 @@ function L2P(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, potentials::
 end
 
 
+""" NNC : Near Neighbor Contribution """
 
 
-
+function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, potentials::Array{ComplexF64, 1}, tree_depth::Int)
+  # Final step in computation
+  # The multipole expansions have been passed up the tree from sources
+  # The low rank procedure applied to well separated 
+  # Now must do O(N^2) computation for close points but since uniform distribution is assumed
+  # then this is a constant computation
+  leaf_offset::Int = getOffsetOfDepth(tree_depth)
+  for global_idx in leaf_offset+1:length(quadtree)
+    box::Box = quadtree[global_idx]
+    # do not want to construct large matrices out of memory concerns
+    for neighbor_idx in box.neighbor_idxs
+       neighbor_box::Box = leaf_offset + neighbor_idx
+    end
+  end 
+end
 
