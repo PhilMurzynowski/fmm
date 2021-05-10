@@ -153,8 +153,22 @@ end
 """ L2P : Local to Particle """
 
 
-function L2P(quadtree::Array{Box, 1}, tree_depth::Int)
+function L2P(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, potentials::Array{ComplexF64, 1}, tree_depth::Int)
   # Pass to particles the local information
+  # multiply out all of the coefficients for the expansion
+  leaf_offset::Int = getOffsetOfDepth(tree_depth)
+  for global_idx in leaf_offset+1:length(quadtree)
+    box::Box = quadtree[global_idx]
+    if (boxHasPoints(box))
+      relevant_potentials = @view potentials[box.start_idx:box.final_idx]
+      relevant_points = @view points[box.start_idx:box.final_idx]
+      # can potentially reorder looping when thinking about vectorization
+      # this should be good vectorization but double check
+      for k in 0:P
+        relevant_potentials .+= ((relevant_points .- box.center).^k .* box.a)
+      end
+    end
+  end
 end
 
 
