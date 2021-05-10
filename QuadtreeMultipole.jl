@@ -35,16 +35,16 @@ function P2M(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
       relevant_points = @view points[box.start_idx:box.final_idx]
       relevant_masses = @view masses[box.start_idx:box.final_idx]
       box.a[1] = sum(relevant_masses)
-      println(global_idx - leaf_offset)
-      @printf "center: %f + %fi\n" real(box.center) imag(box.center)
-      @printf "%f + %fi, " real(box.a[1]) imag(box.a[1])
+      #println(global_idx - leaf_offset)
+      #@printf "center: %f + %fi\n" real(box.center) imag(box.center)
+      #@printf "%f + %fi, " real(box.a[1]) imag(box.a[1])
       for i in 2:P+1
         # subtract box center to form multipole expansion about box center
         k = i - 1
         box.a[i] = -1/k*sum(((relevant_points .- box.center).^k).*relevant_masses)
-        @printf "%f + %fi, " real(box.a[i]) imag(box.a[i])
+        #@printf "%f + %fi, " real(box.a[i]) imag(box.a[i])
       end
-      @printf "\n"
+      #@printf "\n"
     else 
       box.a = zeros(P+1)
     end
