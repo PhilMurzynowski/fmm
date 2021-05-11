@@ -97,7 +97,7 @@ end
 """ M2L : Multipole to Local """
 
 
-function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
+function M2L(quadtree::Array{Box, 1}, tree_depth::Int, start_depth::Int, end_depth::Int)
   # Add contribution of boxes in interaction list to multipole expansion of each box
   # Need to use separate array b as cannot update a mid computation as that would affect
   # later box interaction computations
@@ -105,7 +105,7 @@ function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
   Ps = [x for x in 1:P]
   Ps_idxs = 2:P+1
   # propogate all the way to the leaf level (inclusive)
-  for depth in 2:tree_depth
+  for depth in start_depth:end_depth
     for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
       box::Box = quadtree[global_idx]
       box.b .= zero(box.b[1])
@@ -120,11 +120,16 @@ function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
         for l in 1:P
           j = l + 1
           # first term
-          box.b[j] += -1/l*inter_box.a[1]*(inter_box.center - box.center)^l 
+          box.b[j] += -inter_box.a[1]/(l*(inter_box.center - box.center)^l)
           # summation term
-          box.b[j] += sum((binomial.(Ps.+l.-1, l-1)./((inter_box.center - box.center).^Ps).*csa))
+          box.b[j] += 1/(inter_box.center - box.center)^l * sum((binomial.(Ps.+l.-1, Ps.-1).*csa))
         end
       end
+      # DEBUG
+      #if depth == 2
+      #  @printf "center: %f + %fi\n" real(box.center) imag(box.center)
+      #  println(box.b)
+      #end
     end
   end
 end

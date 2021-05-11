@@ -4,7 +4,7 @@ Instead of mainly relying on recursive data structure,
 store each level of quadtree in its own array.
 
 NOTE: for simplicity not using any notion of depth 0 (one big node), lowest depth is 1 (space is split into 4 boxes)
-      minimum depth required is 2
+      minimum depth required is 3?
 
 NOTE: V2 is the updated version designed to be compatible with multipole expansions
 

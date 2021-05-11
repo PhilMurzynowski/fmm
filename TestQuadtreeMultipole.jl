@@ -26,8 +26,10 @@ function testFullMultipoleComputation()
   P2M(quadtree, points, masses, tree_depth)
   M2M(quadtree, tree_depth)
   # downward pass
-  M2L(quadtree, tree_depth)
+  M2L(quadtree, tree_depth, 2, tree_depth-1)
   L2L(quadtree, tree_depth)
+  # run M2L on finest level to factor in contributions from L2L
+  M2L(quadtree, tree_depth, tree_depth, tree_depth)
   # array to hold computed potentials
   potentials::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, num_bodies)
   potentials .= zero(potentials[1])
@@ -82,6 +84,7 @@ function testStatic()
 
   P2M(quadtree, points, masses, tree_depth)
   M2M(quadtree, tree_depth)
+  M2L(quadtree, tree_depth, 2, tree_depth-1)
 
 end
 
