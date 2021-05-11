@@ -76,13 +76,12 @@ function testStatic()
   @assert length(masses) == num_bodies
   updateQuadtreePointMasses(quadtree, points, masses, tree_depth)
 
-  println(points)
-
   # array to hold computed potentials
   potentials::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, num_bodies)
   potentials .= zero(potentials[1])
 
   P2M(quadtree, points, masses, tree_depth)
+  M2M(quadtree, tree_depth)
 
 end
 

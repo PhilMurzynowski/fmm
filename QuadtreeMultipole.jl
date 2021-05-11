@@ -71,8 +71,6 @@ function M2M(quadtree::Array{Box, 1}, tree_depth::Int)
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
         child_box::Box = quadtree[child_global_idx]
         parent_box.a[1] += child_box.a[1]
-        @printf "center: %f + %fi\n" real(parent_box.center) imag(parent_box.center)
-        @printf "%f + %fi, " real(parent_box.a[1]) imag(parent_box.a[1])
         for l in 1:P
           i = l + 1
           parent_box.a[i] -= 1/l*child_box.a[1]*(child_box.center - parent_box.center).^l
@@ -80,10 +78,13 @@ function M2M(quadtree::Array{Box, 1}, tree_depth::Int)
             j = k + 1
             parent_box.a[i] += binomial(l-1, k-1)*child_box.a[j]*(child_box.center - parent_box.center).^(l-k)
           end
-          @printf "%f + %fi, " real(parent_box.a[i]) imag(parent_box.a[i])
-          @printf "\n"
         end
       end
+      # DEBUG
+      #if depth == 2
+      #  @printf "center: %f + %fi\n" real(parent_box.center) imag(parent_box.center)
+      #  println(parent_box.a)
+      #end
     end
   end
 end
