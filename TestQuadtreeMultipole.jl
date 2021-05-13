@@ -84,7 +84,8 @@ function testStatic()
 
   P2M(quadtree, points, masses, tree_depth)
   M2M(quadtree, tree_depth)
-  M2L(quadtree, tree_depth, 2, tree_depth-1)
+  M2L(quadtree, tree_depth)
+  L2L(quadtree, tree_depth)
 
 end
 

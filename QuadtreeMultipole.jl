@@ -97,15 +97,15 @@ end
 """ M2L : Multipole to Local """
 
 
-function M2L(quadtree::Array{Box, 1}, tree_depth::Int, start_depth::Int, end_depth::Int)
-  # Add contribution of boxes in interaction list to multipole expansion of each box
+function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
+  # Add contribution of boxes in interaction list to expansion of potential of each box
   # Need to use separate array b as cannot update a mid computation as that would affect
   # later box interaction computations
   depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
   Ps = [x for x in 1:P]
   Ps_idxs = 2:P+1
   # propogate all the way to the leaf level (inclusive)
-  for depth in start_depth:end_depth
+  for depth in 2:tree_depth
     for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
       box::Box = quadtree[global_idx]
       box.b .= zero(box.b[1])
@@ -126,10 +126,10 @@ function M2L(quadtree::Array{Box, 1}, tree_depth::Int, start_depth::Int, end_dep
         end
       end
       # DEBUG
-      #if depth == 2
-      #  @printf "center: %f + %fi\n" real(box.center) imag(box.center)
-      #  println(box.b)
-      #end
+      if depth == 3
+        @printf "center: %f + %fi\n" real(box.center) imag(box.center)
+        println(box.b)
+      end
     end
   end
 end
@@ -145,19 +145,23 @@ function L2L(quadtree::Array{Box, 1}, tree_depth::Int)
   for depth in 2:tree_depth-1
     for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
       parent_box::Box = quadtree[global_idx]
+      #println()
       for child_idx in parent_box.children_idxs
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
         child_box::Box = quadtree[child_global_idx]
-        # can reuse a again as have completed addition of contributions from
-        # interacting boxes
         # NOTE, may want to vectorize this double loop if possible
         for l in 0:P
           i = l+1
           for k in l:P
             j = k+1
-            child_box.a[i] += parent_box.b[j]*binomial(k,l)*(child_box.center - parent_box.center)^(k-l);
+            child_box.b[i] += parent_box.b[j]*binomial(k,l)*(child_box.center - parent_box.center)^(k-l);
           end
         end
+        # DEBUG
+        #if depth == 2
+        #  @printf "center: %f + %fi\n" real(child_box.center) imag(child_box.center)
+        #  println(child_box.b)
+        #end
       end
     end
   end
