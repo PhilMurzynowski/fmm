@@ -207,6 +207,11 @@ function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
   # The low rank procedure applied to well separated 
   # Now must do O(N^2) computation for close points but since uniform distribution is assumed
   # then this is a constant computation
+  
+  # debugging copy
+  #o = copy(potentials)
+  #println("before")
+  #println(potentials)
 
   leaf_offset::Int = getOffsetOfDepth(tree_depth)
   for global_idx in leaf_offset+1:length(quadtree)
@@ -218,6 +223,7 @@ function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
       relevant_points = @view points[box.start_idx:box.final_idx]
       relevant_potentials = @view potentials[box.start_idx:box.final_idx]
       relevant_masses = @view masses[box.start_idx:box.final_idx]
+
       
       # contribution from within same box
       # zero out computation with of body with itself as log(0) = -Inf
@@ -244,6 +250,9 @@ function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
 
     end
   end 
+  #println("NNC contribution")
+  #println(potentials - o)
+  #println("after")
   #println(potentials)
 end
 

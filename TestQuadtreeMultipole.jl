@@ -9,19 +9,36 @@ Test multipole code
 include("QuadtreeMultipole.jl")
 
 
+using Random
+
+
 function testFullMultipoleComputation()
   # an end to end test for one time step
 
   # specify tree parameters and construct tree
-  tree_depth::Int = 4
+  tree_depth::Int = 5
   side_length::Float64 = 1.0
   quadtree::Array{Box, 1} = buildQuadtree(tree_depth, side_length)
   # generate points and masses
-  num_bodies::Int = 3
+  num_bodies::Int = 5000
+  #Random.seed!(1)
   points::Array{ComplexF64, 1} = rand(ComplexF64, num_bodies) * side_length
+  #println(points)
   masses::Array{Float64, 1} = rand(Float64, num_bodies)
+  #masses::Array{Float64, 1} = ones(Float64, num_bodies)
   # associate quadtree with point masses
   updateQuadtreePointMasses(quadtree, points, masses, tree_depth, side_length)
+
+  # visual
+  gr(size = (3000, 3000))
+  p = plot()
+  displayQuadtree(p, quadtree, points, masses, tree_depth)
+  xlimits = (-0.1, 1.1)
+  ylimits = xlimits
+  xlims!(xlimits)
+  ylims!(ylimits)
+  gui()
+
   # upward pass
   P2M(quadtree, points, masses, tree_depth)
   M2M(quadtree, tree_depth)
@@ -36,25 +53,27 @@ function testFullMultipoleComputation()
   L2P(quadtree, points, potentials, tree_depth)
   NNC(quadtree, points, masses, potentials, tree_depth)
 
+  # potential is actually only the real component
+  potentials = real(potentials)
+
   # actual results (construct full matrix, O(N^2) approach)
   # NOTE: points and masses will have been reordered by the color sort, but this is acceptable as the particles themselves have not been changed
   correct_potentials = similar(potentials)
   correct_potentials .= zero(correct_potentials[1])
   kernel_mtx::Array{ComplexF64, 2} = log.(transpose(points) .- points)
   foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(points))
+  #show(stdout, "text/plain", kernel_mtx)
   # can't do simple dot product unfortunately
-  correct_potentials = vec(sum(kernel_mtx.*masses, dims=1))
+  correct_potentials = real(vec(sum(kernel_mtx.*masses, dims=1)))
 
-  println(correct_potentials)
-  println(potentials)
   @assert correct_potentials ≈ potentials
 
 end
 
 
 function runTests()
-  #testFullMultipoleComputation()
-  testStatic()
+  testFullMultipoleComputation()
+  #testStatic()
 end
 
 function testStatic()
@@ -99,7 +118,7 @@ function testStatic()
 
   println(correct_potentials)
   println(potentials)
-  @assert correct_potentials ≈ potentials
+  @assert real(correct_potentials) ≈ real(potentials)
 
 end
 
