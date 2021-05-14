@@ -126,10 +126,10 @@ function M2L(quadtree::Array{Box, 1}, tree_depth::Int)
         end
       end
       # DEBUG
-      if depth == 3
-        @printf "center: %f + %fi\n" real(box.center) imag(box.center)
-        println(box.b)
-      end
+      #if depth == 3
+      #  @printf "center: %f + %fi\n" real(box.center) imag(box.center)
+      #  println(box.b)
+      #end
     end
   end
 end
@@ -159,7 +159,7 @@ function L2L(quadtree::Array{Box, 1}, tree_depth::Int)
         end
         # DEBUG
         #if depth == 2
-        #  @printf "center: %f + %fi\n" real(child_box.center) imag(child_box.center)
+        #  @printf "center: %f + %fi, " real(child_box.center) imag(child_box.center)
         #  println(child_box.b)
         #end
       end
@@ -189,11 +189,12 @@ function L2P(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, potentials::
       for idx in box.start_idx:box.final_idx
         for k = 0:P
           j = k + 1
-          potentials[idx] += box.a[j]*(points[idx] - box.center)^k;
+          potentials[idx] += box.b[j]*(points[idx] - box.center)^k;
         end
       end        
     end
   end
+  #println(potentials)
 end
 
 
@@ -206,6 +207,7 @@ function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
   # The low rank procedure applied to well separated 
   # Now must do O(N^2) computation for close points but since uniform distribution is assumed
   # then this is a constant computation
+
   leaf_offset::Int = getOffsetOfDepth(tree_depth)
   for global_idx in leaf_offset+1:length(quadtree)
     box::Box = quadtree[global_idx]
@@ -220,10 +222,10 @@ function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
       # contribution from within same box
       # zero out computation with of body with itself as log(0) = -Inf
       # this is also 0 if only one point in box
-      kernel_mtx::Array{ComplexF64, 2} = log.(relevant_points .- relevant_points')
+      kernel_mtx::Array{ComplexF64, 2} = log.(transpose(relevant_points) .- relevant_points)
       foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(relevant_points))
       # can't do simple dot product unfortunately
-      relevant_potentials .+= vec(sum(kernel_mtx.*relevant_masses, dims=2))
+      relevant_potentials .+= vec(sum(kernel_mtx.*relevant_masses, dims=1))
       
       # contribution from neighbor boxes
       for neighbor_idx in box.neighbor_idxs
@@ -236,11 +238,12 @@ function NNC(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Arra
            # CHECK 
            neighbor_points = @view points[neighbor_box.start_idx:neighbor_box.final_idx]
            neighbor_masses = @view masses[neighbor_box.start_idx:neighbor_box.final_idx]
-           relevant_potentials .+= vec(sum(log.(relevant_points' .- neighbor_points).*neighbor_masses, dims=2))
+           relevant_potentials .+= vec(sum(neighbor_masses.*log.(transpose(relevant_points) .- neighbor_points), dims=1))
          end
       end
 
     end
   end 
+  #println(potentials)
 end
 

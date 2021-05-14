@@ -20,7 +20,7 @@ using Printf
 # number of additional coefficients of multipole expansion to keep
 # total number of coefficients will be P + 1
 # NOTE: high number of coeff can lead to binomal func overflowing
-const P = 4
+const P = 30
 
 
 # NOTE:
