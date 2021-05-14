@@ -1,4 +1,9 @@
 
+""" Definitions and helper functions for a Quadtree """
+
+
+include("FourColorSort.jl")
+
 
 """ Basic unit of a Quadtree """
 
@@ -23,23 +28,31 @@ mutable struct Box
   Box(depth::Int, idx::Int, center::ComplexF64, p::Int) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, -1, zeros(ComplexF64, p+1), zeros(ComplexF64, p+1)) 
 end
 
+struct Quadtree
+  # header information
+  tree_depth::Int
+  depth_offsets::Array{Int, 1}
+  # actual tree represented as an array
+  tree::Array{Box, 1}
+end
+
 
 """ Function to build a quadtree of specific depth and size """
 
 
-function buildQuadtree(max_depth::Int, side_length=1.0)
-  @assert max_depth >= 1
+function buildQuadtree(tree_depth::Int, p::Int, side_length=1.0)
+  @assert tree_depth >= 3
   # build as one array to potentially increase cache locality
-  num_boxes_in_tree::Int = sum([4^depth for depth in 1:max_depth])
+  num_boxes_in_tree::Int = sum([4^depth for depth in 1:tree_depth])
   tree::Array{Box, 1} = Array{Box, 1}(undef, num_boxes_in_tree)
-  depth_offsets = getDepthOffsets(max_depth)
-  for depth in 1:max_depth 
+  depth_offsets = vcat([0], [sum([4^i for i in 1:depth]) for depth in 1:tree_depth-1])
+  for depth in 1:tree_depth 
     for idx in 1:4^depth
       box_center::ComplexF64 = getBoxCenter(depth, idx, side_length)
-      tree[depth_offsets[depth] + idx] = Box(depth, idx, box_center)
+      tree[depth_offsets[depth] + idx] = Box(depth, idx, box_center, p)
     end
   end
-  return tree
+  return Quadtree(tree_depth, depth_offsets, tree)
 end
 
 
@@ -48,9 +61,9 @@ end
 
 # NOTE: doing this as BFS could potentially have better locality, unless switch quadtree to bfs ordering
 # currently jumping and jumping to higher depth offsets
-function colorSortQuadtreePointMasses(box::Box, quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, max_depth::Int, depth::Int, first::Int, last::Int)
+function colorSortQuadtreePointMasses(box::Box, quadtree::Quadtree, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, depth::Int, first::Int, last::Int)
 
-  if depth == max_depth
+  if depth == quadtree.tree_depth
     box.start_idx = first
     box.final_idx = last
     return
@@ -62,26 +75,26 @@ function colorSortQuadtreePointMasses(box::Box, quadtree::Array{Box, 1}, points:
   bl_child::Box = quadtree[depth_offset + box.children_idxs[2]]
   tr_child::Box = quadtree[depth_offset + box.children_idxs[3]]
   br_child::Box = quadtree[depth_offset + box.children_idxs[4]]
-  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, max_depth, depth+1, first, a-1)
-  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, max_depth, depth+1, a, c)
-  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, max_depth, depth+1, c+1, d)
-  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, max_depth, depth+1, d+1, last)
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, depth+1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, depth+1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, depth+1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, depth+1, d+1, last)
 
 end
 
-function updateQuadtreePointMasses(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, tree_depth::Int, side_length::Float64=1.0)
+function updateQuadtreePointMasses(quadtree::Quadtree, points, masses::Array{Float64, 1}, side_length::Float64=1.0)
   tree_center::ComplexF64 = side_length/2 + side_length/2*1im
   first::Int = 1
   last::Int = length(points)
   a::Int, c::Int, d::Int = fourColorSort!(points, masses, tree_center, first, last)
-  tl_child::Box = quadtree[1]
-  bl_child::Box = quadtree[2]
-  tr_child::Box = quadtree[3]
-  br_child::Box = quadtree[4]
-  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, tree_depth, 1, first, a-1)
-  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, tree_depth, 1, a, c)
-  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, tree_depth, 1, c+1, d)
-  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, tree_depth, 1, d+1, last)
+  tl_child::Box = quadtree.tree[1]
+  bl_child::Box = quadtree.tree[2]
+  tr_child::Box = quadtree.tree[3]
+  br_child::Box = quadtree.tree[4]
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, 1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, 1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, 1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, 1, d+1, last)
 end
 
 
@@ -110,7 +123,6 @@ function findNeighborIdxs(depth::Int, idx::Int)
   column_size::Int = 2^depth
   num_boxes::Int = 4^depth
   neighbors::Array{Int, 1} = Array{Int, 1}[]
-
   # 2 middle side neighbors
   # check if not in left column
   if (idx > column_size)
@@ -133,7 +145,6 @@ function findNeighborIdxs(depth::Int, idx::Int)
       push!(neighbors, idx + column_size - 1)
     end
   end
-
   # bottom three neighbors
   # check if not in bottom row
   if (mod1(idx, column_size) != column_size)
@@ -147,23 +158,17 @@ function findNeighborIdxs(depth::Int, idx::Int)
       push!(neighbors, idx + column_size + 1)
     end
   end
-
   return neighbors
-
 end
 
 function findInteractionIdxs(depth::Int, idx::Int)
-
   if (depth == 1)
     return Array{Int, 1}[]
   end
-
   parent_idx::Int = findParentIdx(depth, idx)
   parent_neighbor_idxs::Array{Int, 1} = findNeighborIdxs(depth-1, parent_idx)
   interacting_idxs::Array{Int, 1} = vcat(findChildrenIdxs.(depth-1, parent_neighbor_idxs)...)
-
   return setdiff(interacting_idxs, findNeighborIdxs(depth, idx))
-
 end
 
 function getBoxCenter(depth, idx, side_length)
@@ -179,15 +184,10 @@ function boxHasPoints(box::Box)
   return box.final_idx >= box.start_idx
 end
 
-function getDepthOffsets(max_depth::Int)
-  return vcat([0], [sum([4^i for i in 1:depth]) for depth in 1:max_depth-1])
+function getDepthOffsets(quadtree::Quadtree)
+  return quadtree.depth_offsets
 end
 
-function getOffsetOfDepth(depth::Int)
-  if depth == 1
-    return 0
-  else 
-    return sum([4^i for i in 1:depth-1])
-  end
+function getOffsetOfDepth(quadtree::Quadtree, depth::Int)
+  return quadtree.depth_offsets[depth]
 end
-
