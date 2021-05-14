@@ -20,7 +20,7 @@ function testFullMultipoleComputation()
   side_length::Float64 = 1.0
   quadtree::Array{Box, 1} = buildQuadtree(tree_depth, side_length)
   # generate points and masses
-  num_bodies::Int = 5000
+  num_bodies::Int = 7
   #Random.seed!(1)
   points::Array{ComplexF64, 1} = rand(ComplexF64, num_bodies) * side_length
   #println(points)

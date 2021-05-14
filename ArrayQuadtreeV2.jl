@@ -18,7 +18,7 @@ using Printf
 
 
 # number of additional coefficients of multipole expansion to keep
-# total number of coefficients will be P + 1
+# total number of coefficients will be P + 1 for potential, P for force
 # NOTE: high number of coeff can lead to binomal func overflowing
 const P = 30
 
