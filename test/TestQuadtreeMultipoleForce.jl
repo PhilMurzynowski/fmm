@@ -22,7 +22,7 @@ function testFullForceComputation()
   # generate points and masses
   num_bodies::Int = 100
   #Random.seed!(1)
-  points::Array{ComplexF64, 1} = rand(ComplexF64, num_bodies) * side_length
+  points::Array{complexf64, 1} = rand(complexf64, num_bodies) * side_length
   #println(points)
   masses::Array{Float64, 1} = rand(Float64, num_bodies)
   #masses::Array{Float64, 1} = ones(Float64, num_bodies)
@@ -47,7 +47,6 @@ function testFullForceComputation()
   # downward pass
   M2L_F(quadtree, tree_depth)
   L2L_F(quadtree, tree_depth)
-  # run M2L on finest level to factor in contributions from L2L
 
   # using notation from greengard, ω
   # potential is Re(ω)

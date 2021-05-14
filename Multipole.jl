@@ -189,6 +189,7 @@ function L2P_F(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, ω_p::Arra
       #    for i = Box(ibox_global).particlelist
       for idx in box.start_idx:box.final_idx
         # for forces don't use the first term
+        ω_p[idx] = 0
         for k = 1:P
           j = k + 1
           # multiply by k because taking derivative
