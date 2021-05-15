@@ -19,7 +19,7 @@ Wrapper for all components
 
 function FMM!(quadtree::Quadtree, points, masses, ω_p)
   P2M!(quadtree, points, masses)
-  M2M!(quadtree)
+  @btime M2M!(quadtree)
   # downward pass
   M2L!(quadtree)
   L2L!(quadtree)
@@ -80,6 +80,9 @@ function M2M!(quadtree::Quadtree)
   # propogate up multipole expansions from the leaves
   # to the highest boxes at depth 2
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
+
+  # TODO PREALLOCATE all tmps used in multipole computation
+
   for depth in quadtree.tree_depth-1:-1:1
     for idx in 1:4^depth
       global_idx::Int = depth_offsets[depth] + idx
@@ -114,9 +117,14 @@ function M2M!(quadtree::Quadtree)
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
         child_box::Box = quadtree.tree[child_global_idx]
         parent_box.a[1] += child_box.a[1]
+
+        diff = child_box.center - parent_box.center
+        tmp = copy(diff)
+
         for l in 1:P
           i = l + 1
-          parent_box.a[i] -= 1/l*child_box.a[1]*(child_box.center - parent_box.center).^l
+          parent_box.a[i] -= 1/l*child_box.a[1]*tmp
+          tmp *= diff
           for k in 1:l
             j = k + 1
             parent_box.a[i] += binomial(l-1, k-1)*child_box.a[j]*(child_box.center - parent_box.center).^(l-k)
