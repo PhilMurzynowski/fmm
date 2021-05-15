@@ -227,7 +227,7 @@ function NNC(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array{
       # zero out computation with of body with itself as log(0) = -Inf
       # this is also 0 if only one point in box
       #kernel_mtx::Array{ComplexF64, 2} = log.(transpose(relevant_points) .- relevant_points)
-      kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(relevant_points) .- relevant_points)
+      kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(relevant_points) .- relevant_points .+ 1e-32)
       foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(relevant_points))
       # can't do simple dot product unfortunately
       relevant_ω_p .+= vec(sum(kernel_mtx.*relevant_masses, dims=1))
