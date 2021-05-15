@@ -17,9 +17,9 @@ Wrapper for all components
 
 """
 
-function FMM!(quadtree::Quadtree, points, masses, ω_p)
+function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table)
   P2M!(quadtree, points, masses)
-  @btime M2M!(quadtree)
+  @btime M2M!(quadtree, $binomial_table)
   # downward pass
   M2L!(quadtree)
   L2L!(quadtree)
@@ -36,6 +36,9 @@ Upward pass functions
 
 """ P2M : Particle to Multipole """
 
+# TESTING PARAM:  P = 33, N = 1000
+# UNOPTIMIZED:    516.538 μs (2240 allocations: 737.73 KiB)
+# OPTIMIZED:      77.243 μs (128 allocations: 42.16 KiB)
 function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
   # determine multipole expansion at all leaf boxes
@@ -48,8 +51,6 @@ function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
       box.a[1] = sum(relevant_masses)
       
       # OPTIMIZED array power operation
-      # For P = 33, N = 1000
-      # 77.243 μs (128 allocations: 42.16 KiB)
       diff = relevant_points .- box.center 
       tmp = diff.*relevant_masses
       for k in 1:P
@@ -58,8 +59,6 @@ function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
         tmp .*= diff
       end
       # UNOPTIMIZED
-      # For P = 33, N = 1000
-      # 516.538 μs (2240 allocations: 737.73 KiB)
       # for i in 2:P+1
       #   # subtract box center to form multipole expansion about box center
       #   k = i - 1
@@ -76,26 +75,48 @@ end
 
 """ M2M : Multipole to multipole"""
 
-function M2M!(quadtree::Quadtree)
+# TESTING PARAM:  P = 33, N = 1000
+# UNOPTIMIZED:    2.692 ms (1 allocation: 672 bytes)
+# OPTIMIZED:      111.956 μs (1 allocation: 672 bytes)
+function M2M!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
   # propogate up multipole expansions from the leaves
   # to the highest boxes at depth 2
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
 
-  # TODO PREALLOCATE all tmps used in multipole computation
+  # PREALLOCATE all tmps used in multipole computation
+  p = length(quadtree.tree[1].b)
+  powers = Array{ComplexF64, 1}(undef, p+2)
 
   for depth in quadtree.tree_depth-1:-1:1
     for idx in 1:4^depth
       global_idx::Int = depth_offsets[depth] + idx
       parent_box::Box = quadtree.tree[global_idx]
-      # zero out as will be adding on contributions from children
-      # do not want data from previous timestep
-      # should not need an extra temporary array for new contents
-      # of a as processing one level at a time and always looking at one level deeper
-
+      # Zero out as will be adding on contributions from children and not previous timesteps
       # QUESTION: when to zero
       parent_box.a .= zero(parent_box.a[1])
-
       # QUESTION: Faster to evaluate all children at once as longer array?
+      
+      # OPTIMIZED power operations and binomial lookup
+      for child_idx in parent_box.children_idxs
+        child_global_idx::Int = depth_offsets[depth+1] + child_idx
+        child_box::Box = quadtree.tree[child_global_idx]
+        parent_box.a[1] += child_box.a[1]
+
+        diff = child_box.center - parent_box.center
+        powers[1] = 1.0
+        powers[2] = diff
+
+        for l in 1:P
+          i = l + 1
+          parent_box.a[i] -= 1/l*child_box.a[1]*powers[i]
+          powers[i+1] = powers[i]*diff
+          for k in 1:l
+            j = k + 1
+            # PROFILED: binomial is expensive! Use a lookup table as only using small k (30 or 50 and under)!
+            parent_box.a[i] += binomial_table[k, l]*child_box.a[j]*powers[l-k+1]
+          end
+        end
+      end
 
       # UNOPTIMIZED
       #for child_idx in parent_box.children_idxs
@@ -110,32 +131,6 @@ function M2M!(quadtree::Quadtree)
       #      parent_box.a[i] += binomial(l-1, k-1)*child_box.a[j]*(child_box.center - parent_box.center).^(l-k)
       #    end
       #  end
-      #end
-      
-      #OPTIMIZED
-      for child_idx in parent_box.children_idxs
-        child_global_idx::Int = depth_offsets[depth+1] + child_idx
-        child_box::Box = quadtree.tree[child_global_idx]
-        parent_box.a[1] += child_box.a[1]
-
-        diff = child_box.center - parent_box.center
-        tmp = copy(diff)
-
-        for l in 1:P
-          i = l + 1
-          parent_box.a[i] -= 1/l*child_box.a[1]*tmp
-          tmp *= diff
-          for k in 1:l
-            j = k + 1
-            parent_box.a[i] += binomial(l-1, k-1)*child_box.a[j]*(child_box.center - parent_box.center).^(l-k)
-          end
-        end
-      end
-      
-      # DEBUG
-      #if depth == 2
-      #  @printf "center: %f + %fi\n" real(parent_box.center) imag(parent_box.center)
-      #  println(parent_box.a)
       #end
     end
   end

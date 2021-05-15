@@ -9,7 +9,7 @@ using BenchmarkTools
 
 include("Quadtree.jl")
 include("Multipole.jl")
-
+include("BinomialTable.jl")
 
 # scaled gravitational constant
 # normal value is 6.67408e-11
@@ -37,6 +37,8 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
   curr_idx = 2
   prev_idx = 1
 
+  binomial_table = binomialTable(P)
+
   for i ∈ 1:timesteps
     # NOTE: make sure updated 
     #println(pos_memory)
@@ -52,7 +54,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # have to sort an additional array, velocity, as well
     updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
     # FMM
-    FMM!(quadtree, curr_points, masses, ω_p)
+    FMM!(quadtree, curr_points, masses, ω_p, binomial_table)
     #println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
 
     # TEST
