@@ -25,7 +25,7 @@ mutable struct Box
   a::Array{ComplexF64, 1}
   b::Array{ComplexF64, 1}
   # initialize start, final as 0, -1. -1 chosen so final < start
-  Box(depth::Int, idx::Int, center::ComplexF64, p::Int) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, -1, zeros(ComplexF64, p+1), zeros(ComplexF64, p+1)) 
+  Box(depth::Int, idx::Int, center::ComplexF64, p::Int) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, -1, zeros(ComplexF64, p+1), zeros(ComplexF64, p)) 
 end
 
 struct Quadtree

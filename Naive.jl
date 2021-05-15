@@ -17,11 +17,11 @@ const G = 1e-2
 # softening paramter to avoid a -> inf when particles close
 const S = 1e-10
 # timestep
-const Δt = 1e-1
+const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 100
+const TIMESTEPS = 200
 # number of bodies
-const N = 3
+const N = 150
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3
 
@@ -59,7 +59,7 @@ function simulate(pos_memory, mass, acc, timesteps=TIMESTEPS, num_past_positions
   for i ∈ 1:timesteps
     curr_pos = @view pos_memory[curr_idx, :, :]
     prev_pos = @view pos_memory[prev_idx, :, :]
-    updateAcc!(acc, curr_pos, mass)
+    println(@elapsed updateAcc!(acc, curr_pos, mass))
     # CHECK/VERIFY: verlet integration
     pos_memory[next_idx, :, :] .= 2*curr_pos - prev_pos + acc * Δt^2
 
@@ -81,9 +81,15 @@ function simulate(pos_memory, mass, acc, timesteps=TIMESTEPS, num_past_positions
     #@assert curr_pos != prev_pos
     x = @view pos_memory[curr_idx, :, 1]
     y = @view pos_memory[curr_idx, :, 2]
-    plot((pos_memory[:, :, 1], pos_memory[:, :, 2]), xlim = lim, ylim = lim, color=:black, label="", legend=false)
-    scatter!((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=7*mass, color=:black, label="", )
-    sleep(0.1)
+
+    # ploting with trails
+    #plot((pos_memory[:, :, 1], pos_memory[:, :, 2]), xlim = lim, ylim = lim, color=:black, label="", legend=false)
+    #scatter!((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=7*mass, color=:black, label="", )
+    
+    #plotting without trails
+    scatter((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=7*mass, color=:black, label="", )
+
+    #sleep(0.1)
     gui() 
   end
 end
@@ -97,23 +103,23 @@ pos_memory = Array{Float64}(undef, NUM_PAST_POSITIONS, N, 2)
 # initialize position at t=-dt and t=0 for verlet integration
 
 
-pos_memory[1, 1, 1] = 0.1 
-pos_memory[1, 1, 2] = 0.7 
-pos_memory[1, 2, 1] = 0.3
-pos_memory[1, 2, 2] = 0.8
-pos_memory[1, 3, 1] = 0.5
-pos_memory[1, 3, 2] = 0.9
-pos_memory[2, 1, 1] = 0.11
-pos_memory[2, 1, 2] = 0.71
-pos_memory[2, 2, 1] = 0.31
-pos_memory[2, 2, 2] = 0.81
-pos_memory[2, 3, 1] = 0.51
-pos_memory[2, 3, 2] = 0.91
+#pos_memory[1, 1, 1] = 0.1 
+#pos_memory[1, 1, 2] = 0.7 
+#pos_memory[1, 2, 1] = 0.3
+#pos_memory[1, 2, 2] = 0.8
+#pos_memory[1, 3, 1] = 0.5
+#pos_memory[1, 3, 2] = 0.9
+#pos_memory[2, 1, 1] = 0.11
+#pos_memory[2, 1, 2] = 0.71
+#pos_memory[2, 2, 1] = 0.31
+#pos_memory[2, 2, 2] = 0.81
+#pos_memory[2, 3, 1] = 0.51
+#pos_memory[2, 3, 2] = 0.91
 
-#pos_memory[1, :, :] = rand(Float64, (N, 2))
-#pos_memory[2, :, :] = pos_memory[1, :, :] + 1e-5*rand(Float64, (N, 2))
+pos_memory[1, :, :] = rand(Float64, (N, 2))
+pos_memory[2, :, :] = pos_memory[1, :, :] + 1e-5*rand(Float64, (N, 2))
 
-mass = 0.5*rand(Float64, N) .+ 1 # masses normalized with respect to gravitational constant
+mass = 0.9*rand(Float64, N) .+ 1 # masses normalized with respect to gravitational constant
 #mass[1] *= 10; # make one mass large so keeps things mostly in place
 acc = Array{Float64}(undef, N, 2)
 

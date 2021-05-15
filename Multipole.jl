@@ -10,6 +10,22 @@ Downwd pass components: M2L, L2L, NNC   """
 
 include("Quadtree.jl")
 
+"""
+
+Wrapper for all components
+
+
+"""
+
+function FMM!(quadtree::Quadtree, points, masses, ω_p)
+  P2M!(quadtree, points, masses)
+  M2M!(quadtree)
+  # downward pass
+  M2L!(quadtree)
+  L2L!(quadtree)
+  L2P!(quadtree, points, ω_p)
+  NNC!(quadtree, points, masses, ω_p)
+end
 
 """
 
@@ -20,7 +36,7 @@ Upward pass functions
 
 """ P2M : Particle to Multipole """
 
-function P2M(quadtree::Quadtree, points, masses::Array{Float64, 1})
+function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
   # determine multipole expansion at all leaf boxes
   for global_idx in leaf_offset+1:length(quadtree.tree)
@@ -49,7 +65,7 @@ end
 
 """ M2M : Multipole to multipole"""
 
-function M2M(quadtree::Quadtree)
+function M2M!(quadtree::Quadtree)
   # propogate up multipole expansions from the leaves
   # to the highest boxes at depth 2
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
@@ -92,7 +108,7 @@ end
 """ M2L : Multipole to Local """
 
 
-function M2L(quadtree::Quadtree)
+function M2L!(quadtree::Quadtree)
   # Add contribution of boxes in interaction list to expansion of potential of each box
   # Need to use separate array b as cannot update a mid computation as that would affect
   # later box interaction computations
@@ -107,17 +123,14 @@ function M2L(quadtree::Quadtree)
       for interaction_idx in box.interaction_idxs
         # interacting box
         inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
-        # b0 (1-indexing)
-        box.b[1] += log(box.center - inter_box.center)*inter_box.a[1]
         # common sub array 
+        # skip 0th term as computing force, not potential
         csa = (-1).^Ps.*inter_box.a[Ps_idxs]./((inter_box.center - box.center).^Ps)
-        box.b[1] += sum(csa)
         for l in 1:P
-          j = l + 1
           # first term
-          box.b[j] += -inter_box.a[1]/(l*(inter_box.center - box.center)^l)
+          box.b[l] += -inter_box.a[1]/(l*(inter_box.center - box.center)^l)
           # summation term
-          box.b[j] += 1/(inter_box.center - box.center)^l * sum((binomial.(Ps.+l.-1, Ps.-1).*csa))
+          box.b[l] += 1/(inter_box.center - box.center)^l * sum((binomial.(Ps.+l.-1, Ps.-1).*csa))
         end
       end
       # DEBUG
@@ -133,7 +146,7 @@ end
 """ L2L : Local to Local """
 
 
-function L2L(quadtree::Quadtree)
+function L2L!(quadtree::Quadtree)
   # propogate down information to children
   # do for every level above leaf level
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
@@ -145,11 +158,9 @@ function L2L(quadtree::Quadtree)
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
         child_box::Box = quadtree.tree[child_global_idx]
         # NOTE, may want to vectorize this double loop if possible
-        for l in 0:P
-          i = l+1
+        for l in 1:P
           for k in l:P
-            j = k+1
-            child_box.b[i] += parent_box.b[j]*binomial(k,l)*(child_box.center - parent_box.center)^(k-l);
+            child_box.b[l] += parent_box.b[k]*binomial(k,l)*(child_box.center - parent_box.center)^(k-l);
           end
         end
         # DEBUG
@@ -166,7 +177,7 @@ end
 """ L2P : Local to Particle """
 
 
-function L2P(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
+function L2P!(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
   # Pass to particles the local information
   # multiply out all of the coefficients for the expansion
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
@@ -185,9 +196,8 @@ function L2P(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
         # for forces don't use the first term
         ω_p[idx] = 0
         for k = 1:P
-          j = k + 1
           # multiply by k because taking derivative
-          ω_p[idx] += k*box.b[j]*(points[idx] - box.center)^(k-1);
+          ω_p[idx] += k*box.b[k]*(points[idx] - box.center)^(k-1);
         end
       end        
     end
@@ -199,7 +209,7 @@ end
 """ NNC : Near Neighbor Contribution """
 
 
-function NNC(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array{ComplexF64, 1})
+function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array{ComplexF64, 1})
   # Final step in computation
   # The multipole expansions have been passed up the tree from sources
   # The low rank procedure applied to well separated 

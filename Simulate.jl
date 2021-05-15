@@ -18,9 +18,9 @@ const S = 1e-10
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 500
+const TIMESTEPS = 200
 # number of bodies
-const N = 100
+const N = 150
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct
@@ -49,16 +49,26 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # to current so that have proper alignment
     # another reason why position based verlet integration is good, as otherwise would
     # have to sort an additional array, velocity, as well
-    # FMM
     updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
-    # upward pass
-    P2M(quadtree, curr_points, masses)
-    M2M(quadtree)
-    # downward pass
-    M2L(quadtree)
-    L2L(quadtree)
-    L2P(quadtree, curr_points, ω_p)
-    NNC(quadtree, curr_points, masses, ω_p)
+    # FMM
+    println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
+
+    # TEST
+    """
+    println("Testing")
+    forces = [real(ω_p), -imag(ω_p)]
+    correct_ω_p = similar(ω_p)
+    correct_ω_p .= zero(correct_ω_p[1])
+    kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(curr_points) .- curr_points)
+    foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(curr_points))
+    #show(stdout, "text/plain", kernel_mtx)
+    # can't do simple dot product unfortunately
+    correct_ω_p = vec(sum(kernel_mtx.*masses, dims=1))
+    correct_forces = [real(correct_ω_p), -imag(correct_ω_p)]
+    #println(correct_forces)
+    #println(forces)
+    @assert correct_forces ≈ forces 
+    """
 
     #VERIFY: verlet integration
     #OPTIMIZE : column layout, can reinterpte complex as two reals
