@@ -88,7 +88,28 @@ function M2M!(quadtree::Quadtree)
       # do not want data from previous timestep
       # should not need an extra temporary array for new contents
       # of a as processing one level at a time and always looking at one level deeper
+
+      # QUESTION: when to zero
       parent_box.a .= zero(parent_box.a[1])
+
+      # QUESTION: Faster to evaluate all children at once as longer array?
+
+      # UNOPTIMIZED
+      #for child_idx in parent_box.children_idxs
+      #  child_global_idx::Int = depth_offsets[depth+1] + child_idx
+      #  child_box::Box = quadtree.tree[child_global_idx]
+      #  parent_box.a[1] += child_box.a[1]
+      #  for l in 1:P
+      #    i = l + 1
+      #    parent_box.a[i] -= 1/l*child_box.a[1]*(child_box.center - parent_box.center).^l
+      #    for k in 1:l
+      #      j = k + 1
+      #      parent_box.a[i] += binomial(l-1, k-1)*child_box.a[j]*(child_box.center - parent_box.center).^(l-k)
+      #    end
+      #  end
+      #end
+      
+      #OPTIMIZED
       for child_idx in parent_box.children_idxs
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
         child_box::Box = quadtree.tree[child_global_idx]
@@ -102,6 +123,7 @@ function M2M!(quadtree::Quadtree)
           end
         end
       end
+      
       # DEBUG
       #if depth == 2
       #  @printf "center: %f + %fi\n" real(parent_box.center) imag(parent_box.center)

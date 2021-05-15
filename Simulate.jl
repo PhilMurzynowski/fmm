@@ -56,7 +56,6 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     #println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
 
     # TEST
-    """
     println("Testing")
     forces = [real(ω_p), -imag(ω_p)]
     correct_ω_p = similar(ω_p)
@@ -70,7 +69,6 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     #println(correct_forces)
     #println(forces)
     @assert correct_forces ≈ forces 
-    """
 
     #VERIFY: verlet integration
     #OPTIMIZE : column layout, can reinterpte complex as two reals
