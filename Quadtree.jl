@@ -61,7 +61,7 @@ end
 
 # NOTE: doing this as BFS could potentially have better locality, unless switch quadtree to bfs ordering
 # currently jumping and jumping to higher depth offsets
-function colorSortQuadtreePointMasses(box::Box, quadtree::Quadtree, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, depth::Int, first::Int, last::Int)
+function colorSortQuadtreePointMasses(box::Box, quadtree::Quadtree, points, masses::Array{Float64, 1}, depth::Int, first::Int, last::Int)
 
   if depth == quadtree.tree_depth
     box.start_idx = first
@@ -70,11 +70,11 @@ function colorSortQuadtreePointMasses(box::Box, quadtree::Quadtree, points::Arra
   end
 
   a::Int, c::Int, d::Int = fourColorSort!(points, masses, box.center, first, last)
-  depth_offset::Int = getOffsetOfDepth(depth+1)
-  tl_child::Box = quadtree[depth_offset + box.children_idxs[1]]
-  bl_child::Box = quadtree[depth_offset + box.children_idxs[2]]
-  tr_child::Box = quadtree[depth_offset + box.children_idxs[3]]
-  br_child::Box = quadtree[depth_offset + box.children_idxs[4]]
+  depth_offset::Int = getOffsetOfDepth(quadtree, depth+1)
+  tl_child::Box = quadtree.tree[depth_offset + box.children_idxs[1]]
+  bl_child::Box = quadtree.tree[depth_offset + box.children_idxs[2]]
+  tr_child::Box = quadtree.tree[depth_offset + box.children_idxs[3]]
+  br_child::Box = quadtree.tree[depth_offset + box.children_idxs[4]]
   colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, depth+1, first, a-1)
   colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, depth+1, a, c)
   colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, depth+1, c+1, d)

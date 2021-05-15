@@ -6,6 +6,7 @@ using Plots
 
 
 include("Quadtree.jl")
+include("Multipole.jl")
 
 
 # scaled gravitational constant
@@ -35,19 +36,20 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
   prev_idx = 1
 
   for i ∈ 1:timesteps
+    # NOTE: make sure updated 
     curr_points = @view pos_memory[:, curr_idx]
     prev_points = @view pos_memory[:, prev_idx]
    
     # FMM
     updateQuadtreePointMasses(quadtree, curr_points, masses)
     # upward pass
-    P2M_F(quadtree, curr_points, masses, TREE_DEPTH)
-    M2M_F(quadtree, TREE_DEPTH)
+    P2M(quadtree, curr_points, masses)
+    M2M(quadtree)
     # downward pass
-    M2L_F(quadtree, TREE_DEPTH)
-    L2L_F(quadtree, TREE_DEPTH)
-    L2P_F(quadtree, curr_points, ω_p, TREE_DEPTH)
-    NNC_F(quadtree, curr_points, masses, ω_p, TREE_DEPTH)
+    M2L(quadtree)
+    L2L(quadtree)
+    L2P(quadtree, curr_points, ω_p)
+    NNC(quadtree, curr_points, masses, ω_p)
 
     #VERIFY: verlet integration
     #OPTIMIZE : column layout, can reinterpte complex as two reals
@@ -59,11 +61,13 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     curr_idx = next_idx
     next_idx = mod1(next_idx+1, num_past_positions)
 
-    @assert curr_points != prev_points
-    # OPTIMIZE with reshaping
-    curr_points = @view pos_memory[:, curr_idx]
-    plot((real(curr_points), imag(curr_points)), xlim = (-2, 2), ylim = (-2, 2), color=:black, label="", legend=false)
-    scatter!((x, y), xlim = (-2, 2), ylim = (-2, 2), legend=false, markerstrokewidth=0, markersize=7*mass, color=:black, label="", )
+    #@assert curr_points != prev_points
+    plot_points = @view pos_memory[:, prev_idx]
+    x = real(plot_points)
+    y = imag(plot_points)
+    # OPTIMIZE with reinterpreting / reshaping or storing differently
+    #plot((real(pos_memory), imag(pos_memory)), xlim = (-2, 2), ylim = (-2, 2), color=:black, label="", legend=false)
+    scatter!((x, y), xlim = (-2, 2), ylim = (-2, 2), legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
     gui() 
   end
 
@@ -75,10 +79,8 @@ end
 quadtree = buildQuadtree(TREE_DEPTH, P)
 position_memory = Array{ComplexF64}(undef, N, NUM_PAST_POSITIONS)
 # initialize position at t=-dt and t=0 for verlet integration
-points_minusΔt = @view position_memory[:, 1]
-points_zeroΔt  = @view position_memory[:, 2]
-points_minusΔt = rand(ComplexF64, N)
-points_zeroΔt  = rand(ComplexF64, N)
+position_memory[:, 1]  = rand(ComplexF64, N)
+position_memory[:, 2]  = rand(ComplexF64, N)
 masses         = rand(Float64, N)
 ω_p            = Array{ComplexF64, 1}(undef, N)
 

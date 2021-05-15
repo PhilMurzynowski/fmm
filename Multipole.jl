@@ -1,20 +1,14 @@
-"""
 
-Multipole math
-Assuming a log(x - y) potential function where x and y are complex (and multiplied by masses as well)
-This version is meant to compute force, of the form 1 / (x - y)
+""" Multipole Math for the Fast Multipole Method 
 
-Upward: P2M, M2M
-Downward: M2L, L2L, ??, neighbor contribution
+In a 2D plane gravitational force takes the form 1 / (x - y), which follows
+from a log(x - y) potential function where x and y are complex.
 
-"""
-
-include("ArrayQuadtreeV2.jl")
+Upward pass components: P2M, M2M
+Downwd pass components: M2L, L2L, NNC   """
 
 
-# helper constants
-const Ps = [x for x in 1:P]
-const Ps_idxs = [x for x in 2:P+1]
+include("Quadtree.jl")
 
 
 """
@@ -26,11 +20,11 @@ Upward pass functions
 
 """ P2M : Particle to Multipole """
 
-function P2M_F(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, tree_depth::Int)
-  leaf_offset::Int = getOffsetOfDepth(tree_depth)
+function P2M(quadtree::Quadtree, points, masses::Array{Float64, 1})
+  leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
   # determine multipole expansion at all leaf boxes
-  for global_idx in leaf_offset+1:length(quadtree)
-    box::Box = quadtree[global_idx]
+  for global_idx in leaf_offset+1:length(quadtree.tree)
+    box::Box = quadtree.tree[global_idx]
     # builtin sum uses cumsum so using the builtin for better error
     if (boxHasPoints(box))
       relevant_points = @view points[box.start_idx:box.final_idx]
@@ -55,14 +49,14 @@ end
 
 """ M2M : Multipole to multipole"""
 
-function M2M_F(quadtree::Array{Box, 1}, tree_depth::Int)
+function M2M(quadtree::Quadtree)
   # propogate up multipole expansions from the leaves
   # to the highest boxes at depth 2
-  depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
-  for depth in tree_depth-1:-1:1
+  depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
+  for depth in quadtree.tree_depth-1:-1:1
     for idx in 1:4^depth
       global_idx::Int = depth_offsets[depth] + idx
-      parent_box::Box = quadtree[global_idx]
+      parent_box::Box = quadtree.tree[global_idx]
       # zero out as will be adding on contributions from children
       # do not want data from previous timestep
       # should not need an extra temporary array for new contents
@@ -70,7 +64,7 @@ function M2M_F(quadtree::Array{Box, 1}, tree_depth::Int)
       parent_box.a .= zero(parent_box.a[1])
       for child_idx in parent_box.children_idxs
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
-        child_box::Box = quadtree[child_global_idx]
+        child_box::Box = quadtree.tree[child_global_idx]
         parent_box.a[1] += child_box.a[1]
         for l in 1:P
           i = l + 1
@@ -98,21 +92,21 @@ end
 """ M2L : Multipole to Local """
 
 
-function M2L_F(quadtree::Array{Box, 1}, tree_depth::Int)
+function M2L(quadtree::Quadtree)
   # Add contribution of boxes in interaction list to expansion of potential of each box
   # Need to use separate array b as cannot update a mid computation as that would affect
   # later box interaction computations
-  depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
+  depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
   Ps = [x for x in 1:P]
   Ps_idxs = 2:P+1
   # propogate all the way to the leaf level (inclusive)
-  for depth in 2:tree_depth
+  for depth in 2:quadtree.tree_depth
     for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
-      box::Box = quadtree[global_idx]
+      box::Box = quadtree.tree[global_idx]
       box.b .= zero(box.b[1])
       for interaction_idx in box.interaction_idxs
         # interacting box
-        inter_box::Box = quadtree[depth_offsets[depth] + interaction_idx]
+        inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
         # b0 (1-indexing)
         box.b[1] += log(box.center - inter_box.center)*inter_box.a[1]
         # common sub array 
@@ -139,17 +133,17 @@ end
 """ L2L : Local to Local """
 
 
-function L2L_F(quadtree::Array{Box, 1}, tree_depth::Int)
+function L2L(quadtree::Quadtree)
   # propogate down information to children
   # do for every level above leaf level
-  depth_offsets::Array{Int, 1} = getDepthOffsets(tree_depth)
-  for depth in 2:tree_depth-1
+  depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
+  for depth in 2:quadtree.tree_depth-1
     for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
-      parent_box::Box = quadtree[global_idx]
+      parent_box::Box = quadtree.tree[global_idx]
       #println()
       for child_idx in parent_box.children_idxs
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
-        child_box::Box = quadtree[child_global_idx]
+        child_box::Box = quadtree.tree[child_global_idx]
         # NOTE, may want to vectorize this double loop if possible
         for l in 0:P
           i = l+1
@@ -172,12 +166,12 @@ end
 """ L2P : Local to Particle """
 
 
-function L2P_F(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, ω_p::Array{ComplexF64, 1}, tree_depth::Int)
+function L2P(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
   # Pass to particles the local information
   # multiply out all of the coefficients for the expansion
-  leaf_offset::Int = getOffsetOfDepth(tree_depth)
-  for global_idx in leaf_offset+1:length(quadtree)
-    box::Box = quadtree[global_idx]
+  leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
+  for global_idx in leaf_offset+1:length(quadtree.tree)
+    box::Box = quadtree.tree[global_idx]
     if (boxHasPoints(box))
       # can potentially reorder looping when thinking about vectorization
       # this should be good vectorization but double check
@@ -205,7 +199,7 @@ end
 """ NNC : Near Neighbor Contribution """
 
 
-function NNC_F(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Array{Float64, 1}, ω_p::Array{ComplexF64, 1}, tree_depth::Int)
+function NNC(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array{ComplexF64, 1})
   # Final step in computation
   # The multipole expansions have been passed up the tree from sources
   # The low rank procedure applied to well separated 
@@ -217,9 +211,9 @@ function NNC_F(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Ar
   #println("before")
   #println(potentials)
 
-  leaf_offset::Int = getOffsetOfDepth(tree_depth)
-  for global_idx in leaf_offset+1:length(quadtree)
-    box::Box = quadtree[global_idx]
+  leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
+  for global_idx in leaf_offset+1:length(quadtree.tree)
+    box::Box = quadtree.tree[global_idx]
     if (boxHasPoints(box))
       # do not want to construct large matrices out of memory concerns
       # though if the matrix construction is not a huge penalty may want to look into because of vectorization
@@ -240,7 +234,7 @@ function NNC_F(quadtree::Array{Box, 1}, points::Array{ComplexF64, 1}, masses::Ar
       
       # contribution from neighbor boxes
       for neighbor_idx in box.neighbor_idxs
-        neighbor_box::Box = quadtree[leaf_offset + neighbor_idx]
+        neighbor_box::Box = quadtree.tree[leaf_offset + neighbor_idx]
          # evaluate whether branching might be a bigger hit to performance
          # when assuming uniform distrubition should almost always have points
          # but also want to avoid zero dimensional arrays
