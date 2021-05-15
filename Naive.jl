@@ -21,7 +21,7 @@ const Δt = 1e-1
 # num timesteps
 const TIMESTEPS = 100
 # number of bodies
-const N = 20
+const N = 3
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3
 
@@ -68,7 +68,7 @@ function simulate(pos_memory, mass, acc, timesteps=TIMESTEPS, num_past_positions
     pos_memory[next_idx, :, :] .= max.(pos_memory[next_idx, :, :], 0.0)
   
     # DEBUG
-    #if (i > 15)
+    #if (i >= TIMESTEPS-3)
     #  println("timestep")
     #  println(acc)
     #  println(pos_memory[next_idx, :, :])
@@ -78,7 +78,7 @@ function simulate(pos_memory, mass, acc, timesteps=TIMESTEPS, num_past_positions
     curr_idx = next_idx
     next_idx = mod1(next_idx+1, num_past_positions)
 
-    @assert curr_pos != prev_pos
+    #@assert curr_pos != prev_pos
     x = @view pos_memory[curr_idx, :, 1]
     y = @view pos_memory[curr_idx, :, 2]
     plot((pos_memory[:, :, 1], pos_memory[:, :, 2]), xlim = lim, ylim = lim, color=:black, label="", legend=false)
@@ -97,21 +97,21 @@ pos_memory = Array{Float64}(undef, NUM_PAST_POSITIONS, N, 2)
 # initialize position at t=-dt and t=0 for verlet integration
 
 
-#pos_memory[1, 1, 1] = 0.1 
-#pos_memory[1, 1, 2] = 0.7 
-#pos_memory[1, 2, 1] = 0.3
-#pos_memory[1, 2, 2] = 0.8
-#pos_memory[1, 3, 1] = 0.5
-#pos_memory[1, 3, 2] = 0.9
-#pos_memory[2, 1, 1] = 0.11
-#pos_memory[2, 1, 2] = 0.71
-#pos_memory[2, 2, 1] = 0.31
-#pos_memory[2, 2, 2] = 0.81
-#pos_memory[2, 3, 1] = 0.51
-#pos_memory[2, 3, 2] = 0.91
+pos_memory[1, 1, 1] = 0.1 
+pos_memory[1, 1, 2] = 0.7 
+pos_memory[1, 2, 1] = 0.3
+pos_memory[1, 2, 2] = 0.8
+pos_memory[1, 3, 1] = 0.5
+pos_memory[1, 3, 2] = 0.9
+pos_memory[2, 1, 1] = 0.11
+pos_memory[2, 1, 2] = 0.71
+pos_memory[2, 2, 1] = 0.31
+pos_memory[2, 2, 2] = 0.81
+pos_memory[2, 3, 1] = 0.51
+pos_memory[2, 3, 2] = 0.91
 
-pos_memory[1, :, :] = rand(Float64, (N, 2))
-pos_memory[2, :, :] = pos_memory[1, :, :] + 1e-5*rand(Float64, (N, 2))
+#pos_memory[1, :, :] = rand(Float64, (N, 2))
+#pos_memory[2, :, :] = pos_memory[1, :, :] + 1e-5*rand(Float64, (N, 2))
 
 mass = 0.5*rand(Float64, N) .+ 1 # masses normalized with respect to gravitational constant
 #mass[1] *= 10; # make one mass large so keeps things mostly in place

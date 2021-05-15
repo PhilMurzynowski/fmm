@@ -58,3 +58,49 @@ function fourColorSort!(points, masses::Array{Float64, 1}, center_value, first, 
   # @assert b == c + 1
   return (a, c, d)
 end
+
+# same concept, generalized to three arrays
+function fourColorSort!(first, second, third, center_value, start, last) center_x = real(center_value)
+  center_x = real(center_value)
+  center_y = imag(center_value)
+  # four pointers to the four colors
+  a = start 
+  b = start 
+  c = last
+  d = last
+  while (b <= c)
+    if (real(first[b]) <= center_x)
+      if (imag(first[b]) >= center_y)
+        # top left corner
+        swap_elements(first, a, b)
+        swap_elements(second, a, b)
+        swap_elements(third, a, b)
+        a += 1
+        b += 1
+      else
+        # b : bottom left corner
+        b += 1
+      end
+    else 
+      if (imag(first[b]) >= center_y)
+        # c : top right corner 
+        swap_elements(first, b, c)
+        swap_elements(second, b, c)
+        swap_elements(third, b, c)
+        c -= 1
+      else
+        # d : bottom right corner
+        swap_elements(first, b, c)
+        swap_elements(first, c, d)
+        swap_elements(second, b, c)
+        swap_elements(second, c, d)
+        swap_elements(third, b, c)
+        swap_elements(third, c, d)
+        c -= 1
+        d -= 1
+      end
+    end
+  end
+  # @assert b == c + 1
+  return (a, c, d)
+end

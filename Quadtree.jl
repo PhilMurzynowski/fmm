@@ -61,7 +61,8 @@ end
 
 # NOTE: doing this as BFS could potentially have better locality, unless switch quadtree to bfs ordering
 # currently jumping and jumping to higher depth offsets
-function colorSortQuadtreePointMasses(box::Box, quadtree::Quadtree, points, masses::Array{Float64, 1}, depth::Int, first::Int, last::Int)
+# RUNTIME: this ends up being O(Nlog(N))
+function colorSortQuadtreePointMasses(box::Box, quadtree::Quadtree, points, masses::Array{Float64, 1}, prev_points, depth::Int, first::Int, last::Int)
 
   if depth == quadtree.tree_depth
     box.start_idx = first
@@ -69,32 +70,32 @@ function colorSortQuadtreePointMasses(box::Box, quadtree::Quadtree, points, mass
     return
   end
 
-  a::Int, c::Int, d::Int = fourColorSort!(points, masses, box.center, first, last)
+  a::Int, c::Int, d::Int = fourColorSort!(points, masses, prev_points, box.center, first, last)
   depth_offset::Int = getOffsetOfDepth(quadtree, depth+1)
   tl_child::Box = quadtree.tree[depth_offset + box.children_idxs[1]]
   bl_child::Box = quadtree.tree[depth_offset + box.children_idxs[2]]
   tr_child::Box = quadtree.tree[depth_offset + box.children_idxs[3]]
   br_child::Box = quadtree.tree[depth_offset + box.children_idxs[4]]
-  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, depth+1, first, a-1)
-  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, depth+1, a, c)
-  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, depth+1, c+1, d)
-  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, depth+1, d+1, last)
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, prev_points, depth+1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, prev_points, depth+1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, prev_points, depth+1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, prev_points, depth+1, d+1, last)
 
 end
 
-function updateQuadtreePointMasses(quadtree::Quadtree, points, masses::Array{Float64, 1}, side_length::Float64=1.0)
+function updateQuadtreePointMasses(quadtree::Quadtree, points, masses::Array{Float64, 1}, prev_points, side_length::Float64=1.0)
   tree_center::ComplexF64 = side_length/2 + side_length/2*1im
   first::Int = 1
   last::Int = length(points)
-  a::Int, c::Int, d::Int = fourColorSort!(points, masses, tree_center, first, last)
+  a::Int, c::Int, d::Int = fourColorSort!(points, masses, prev_points, tree_center, first, last)
   tl_child::Box = quadtree.tree[1]
   bl_child::Box = quadtree.tree[2]
   tr_child::Box = quadtree.tree[3]
   br_child::Box = quadtree.tree[4]
-  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, 1, first, a-1)
-  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, 1, a, c)
-  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, 1, c+1, d)
-  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, 1, d+1, last)
+  colorSortQuadtreePointMasses(tl_child, quadtree, points, masses, prev_points, 1, first, a-1)
+  colorSortQuadtreePointMasses(bl_child, quadtree, points, masses, prev_points, 1, a, c)
+  colorSortQuadtreePointMasses(tr_child, quadtree, points, masses, prev_points, 1, c+1, d)
+  colorSortQuadtreePointMasses(br_child, quadtree, points, masses, prev_points, 1, d+1, last)
 end
 
 
