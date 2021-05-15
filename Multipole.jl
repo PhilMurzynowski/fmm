@@ -18,10 +18,11 @@ Wrapper for all components
 """
 
 function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table)
+  # upward pass
   P2M!(quadtree, points, masses)
-  @btime M2M!(quadtree, $binomial_table)
+  M2M!(quadtree, binomial_table)
   # downward pass
-  M2L!(quadtree)
+  @btime M2L!(quadtree, $binomial_table)
   L2L!(quadtree)
   L2P!(quadtree, points, ω_p)
   NNC!(quadtree, points, masses, ω_p)
@@ -143,14 +144,19 @@ end
 
 """ M2L : Multipole to Local """
 
-
-function M2L!(quadtree::Quadtree)
+# TESTING PARAM:  P = 33, N = 1000
+# UNOPTIMIZED:    164.646 ms (44521 allocations: 26.49 MiB)
+# OPTIMIZED:      
+function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
   # Add contribution of boxes in interaction list to expansion of potential of each box
-  # Need to use separate array b as cannot update a mid computation as that would affect
-  # later box interaction computations
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
-  Ps = [x for x in 1:P]
-  Ps_idxs = 2:P+1
+
+  # PREALLOCATE all tmps used in multipole computation
+  #Ps = [x for x in 1:P]
+  #Ps_idxs = 2:P+1
+  csa::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, P)
+  powers = Array{ComplexF64, 1}(undef, P+1)
+  
   # propogate all the way to the leaf level (inclusive)
   for depth in 2:quadtree.tree_depth
     for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
@@ -161,19 +167,34 @@ function M2L!(quadtree::Quadtree)
         inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
         # common sub array 
         # skip 0th term as computing force, not potential
-        csa = (-1).^Ps.*inter_box.a[Ps_idxs]./((inter_box.center - box.center).^Ps)
+        
+        # UNOPTIMIZED
+        #csa = (-1).^Ps.*inter_box.a[Ps_idxs]./((inter_box.center - box.center).^Ps)
+        #for l in 1:P
+        #  # first term
+        #  box.b[l] += -inter_box.a[1]/(l*(inter_box.center - box.center)^l)
+        #  # summation term
+        #  box.b[l] += 1/(inter_box.center - box.center)^l * sum((binomial.(Ps.+l.-1, Ps.-1).*csa))
+        #end
+        
+        # OPTIMIZED
+        diff = inter_box.center - box.center
+        powers[1] = 1/diff
+        sign = -1
+        for i in 1:P
+          csa[i] = sign*inter_box.a[i+1] * powers[i]
+          powers[i+1] = powers[i]/diff
+          sign *= -1
+        end
         for l in 1:P
           # first term
-          box.b[l] += -inter_box.a[1]/(l*(inter_box.center - box.center)^l)
+          box.b[l] += -1/l*inter_box.a[1]*powers[l]
           # summation term
-          box.b[l] += 1/(inter_box.center - box.center)^l * sum((binomial.(Ps.+l.-1, Ps.-1).*csa))
+          for k in 1:P
+            box.b[l] += powers[l] * (binomial_table[k, k+l] * csa[k])
+          end
         end
       end
-      # DEBUG
-      #if depth == 3
-      #  @printf "center: %f + %fi\n" real(box.center) imag(box.center)
-      #  println(box.b)
-      #end
     end
   end
 end
