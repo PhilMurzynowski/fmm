@@ -12,13 +12,13 @@ include("Multipole.jl")
 
 # scaled gravitational constant
 # normal value is 6.67408e-11
-const G = 1e-3
+const G = 1e-2
 # softening paramter to avoid a -> inf when particles close
 const S = 1e-10
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 200
+const TIMESTEPS = 500
 # number of bodies
 const N = 100
 # number of past positions saved
@@ -26,7 +26,7 @@ const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct
 const TREE_DEPTH = 3
 # number of terms to keep in multipole expansion
-const P = 33
+const P = 10
 
 function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, num_past_positions=NUM_PAST_POSITIONS)
   gr(reuse=true, size = (1000, 1000))
@@ -105,13 +105,19 @@ quadtree = buildQuadtree(TREE_DEPTH, P)
 position_memory = Array{ComplexF64}(undef, N, NUM_PAST_POSITIONS)
 # initialize position at t=-dt and t=0 for verlet integration
 
-#Random.seed!(1)
+Random.seed!(2)
+#Random.seed!(3)
 
 #position_memory[:, 1] = [0.1+0.7im, 0.3+0.8im, 0.5+0.9im]
 #position_memory[:, 2] = [0.11+0.71im, 0.31+0.81im, 0.51+0.91im]
 
 position_memory[:, 1]  = rand(ComplexF64, N)
-position_memory[:, 2]  = position_memory[:, 1] + 1e-3*rand(ComplexF64, N)
+# Give some small random initial velocity
+# position_memory[:, 2]  = position_memory[:, 1] + 1e-3*rand(ComplexF64, N)
+# Give some tangent velocity
+# NOTE: this is assuming 1.0 x 1.0 space
+tangent_velocity = imag(position_memory[:, 1] .- (0.5 + 0.5im)) .- 1im*real(position_memory[:, 1] .- (0.5 + 0.5im))
+position_memory[:, 2]  = position_memory[:, 1] .+ 1e-2*tangent_velocity
 
 masses         = 0.9*rand(Float64, N) .+ 1
 ω_p            = Array{ComplexF64, 1}(undef, N)
