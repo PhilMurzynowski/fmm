@@ -4,6 +4,7 @@
 
 using Plots
 using Random
+using BenchmarkTools
 
 
 include("Quadtree.jl")
@@ -14,19 +15,19 @@ include("Multipole.jl")
 # normal value is 6.67408e-11
 const G = 1e-2
 # softening paramter to avoid a -> inf when particles close
-const S = 1e-10
+# const S = 1e-10
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 200
+const TIMESTEPS = 2
 # number of bodies
-const N = 150
+const N = 1000
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct
 const TREE_DEPTH = 3
 # number of terms to keep in multipole expansion
-const P = 10
+const P = 33
 
 function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, num_past_positions=NUM_PAST_POSITIONS)
   gr(reuse=true, size = (1000, 1000))
@@ -51,7 +52,8 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # have to sort an additional array, velocity, as well
     updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
     # FMM
-    println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
+    FMM!(quadtree, curr_points, masses, ω_p)
+    #println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
 
     # TEST
     """
@@ -103,6 +105,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # plot((real(transpose(pos_memory)), imag(transpose(pos_memory))), xlim = lim, ylim = lim, color=:black, label="", legend=false)
     
     scatter((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
+    #scatter((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=7*masses, label="")
     gui() 
   end
 

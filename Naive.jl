@@ -19,9 +19,9 @@ const S = 1e-10
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 200
+const TIMESTEPS = 50
 # number of bodies
-const N = 150
+const N = 1000
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3
 

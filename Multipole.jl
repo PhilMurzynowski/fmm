@@ -46,17 +46,28 @@ function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
       relevant_points = @view points[box.start_idx:box.final_idx]
       relevant_masses = @view masses[box.start_idx:box.final_idx]
       box.a[1] = sum(relevant_masses)
-      #println(global_idx - leaf_offset)
-      #@printf "center: %f + %fi\n" real(box.center) imag(box.center)
-      #@printf "%f + %fi, " real(box.a[1]) imag(box.a[1])
-      for i in 2:P+1
-        # subtract box center to form multipole expansion about box center
-        k = i - 1
-        box.a[i] = -1/k*sum(((relevant_points .- box.center).^k).*relevant_masses)
-        #@printf "%f + %fi, " real(box.a[i]) imag(box.a[i])
+      
+      # OPTIMIZED array power operation
+      # For P = 33, N = 1000
+      # 77.243 μs (128 allocations: 42.16 KiB)
+      diff = relevant_points .- box.center 
+      tmp = diff.*relevant_masses
+      for k in 1:P
+        i = k + 1
+        box.a[i] = -1/k * sum(tmp)
+        tmp .*= diff
       end
-      #@printf "\n"
+      # UNOPTIMIZED
+      # For P = 33, N = 1000
+      # 516.538 μs (2240 allocations: 737.73 KiB)
+      # for i in 2:P+1
+      #   # subtract box center to form multipole expansion about box center
+      #   k = i - 1
+      #   box.a[i] = -1/k*sum(((relevant_points .- box.center).^k).*relevant_masses)
+      #   #@printf "%f + %fi, " real(box.a[i]) imag(box.a[i])
+      # end
     else 
+      # PROFILE, can track if already 0 so don't need to do this perhaps, but that would add branching
       box.a = zeros(P+1)
     end
   end
