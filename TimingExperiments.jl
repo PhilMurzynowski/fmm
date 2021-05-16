@@ -65,12 +65,9 @@ in2 = rand(ComplexF64)
 @btime fastComplexPowerOperation(in2, n)
 @btime complexPowerOperation(in1, n)
 
-
-
-
-
 # LOOK INTO DOT PRODUCTS, complex with complex, etc.
 # to replace sum(x .* y)
 
 # OPTIMIZE BINOMIAL using PASCAL's triangle, as incremeting one at a time, profile
+# DONE: using LUT (look up tables)
 
