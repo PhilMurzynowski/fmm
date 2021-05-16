@@ -186,7 +186,7 @@ function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
           powers[i+1] = powers[i]/diff
           sign *= -1
         end
-        for l in 1:P
+        @inbounds for l in 1:P
           # first term
           box.b[l] += -1/l*inter_box.a[1]*powers[l]
           # summation term
