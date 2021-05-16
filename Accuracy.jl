@@ -35,6 +35,9 @@ Ps = 2:60
 abs_error = Array{Float64, 1}(undef, length(Ps))
 rel_error = Array{Float64, 1}(undef, length(Ps))
 
+preallocated_size = floor(Int, N/2)
+preallocated_mtx = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
+
 for p in Ps
   quadtree = buildQuadtree(TREE_DEPTH, p)
   pos_memory = Array{ComplexF64}(undef, N, NUM_PAST_POSITIONS)
@@ -47,8 +50,6 @@ for p in Ps
   ω_p            = Array{ComplexF64, 1}(undef, N)
   binomial_table = largeBinomialTable(p)
   binomial_table_t = binomialTableTransposed(p)
-  preallocated_size = floor(Int, N/2)
-  preallocated_mtx::Array{ComplexF64, 2} = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
   next_idx = 3
   curr_idx = 2
   prev_idx = 1
@@ -78,7 +79,7 @@ Plots.resetfontsizes();
 Plots.scalefontsizes(1.5);
 p1 = plot(Ps, abs_error, label="absolute error")
 p2 = plot!(Ps, rel_error, label="relative error") 
-title!(".\nNumber of expansion Terms (P) vs. Error (L2 norm)\nNumber of bodies: $N, Tree depth: $TREE_DEPTH")
+title!(".\nError (L2 norm) vs. Number of expansion Terms (P)\nNumber of bodies: $N, Tree depth: $TREE_DEPTH")
 p3 = plot!([eps(Float32)], seriestype="hline", label="eps(Float32)")
 p4 = plot!([eps(Float64)], seriestype="hline", label="eps(Float64)")
 yaxis!(:log)
