@@ -26,9 +26,8 @@ function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial
   M2M!(quadtree, binomial_table)
   # downward pass
   M2L!(quadtree, binomial_table)
-  @btime L2L!(quadtree, $binomial_table, $binomial_table_t)
-  #L2L!(quadtree, binomial_table, binomial_table_t)
-  L2P!(quadtree, points, ω_p)
+  L2L!(quadtree, binomial_table, binomial_table_t)
+  @btime L2P!(quadtree, $points, $ω_p)
   NNC!(quadtree, points, masses, ω_p)
 end
 
@@ -258,33 +257,50 @@ end
 
 """ L2P : Local to Particle """
 
-
+# TESTING PARAM:  P = 32, N = 1000
+# UNOPTIMIZED:    306.131 μs (0 allocations: 0 bytes) 
+# OPTIMIZED:      86.411 μs (0 allocations: 0 bytes)
 function L2P!(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
   # Pass to particles the local information
   # multiply out all of the coefficients for the expansion
+  # for forces don't use the first term
+  # multiply by k because taking derivative of potential expansion
+  # NOTE: @inbounds and @simd didn't make any performance difference here
+  
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
   for global_idx in leaf_offset+1:length(quadtree.tree)
     box::Box = quadtree.tree[global_idx]
     if (boxHasPoints(box))
-      # can potentially reorder looping when thinking about vectorization
-      # this should be good vectorization but double check
-      #relevant_potentials = @view potentials[box.start_idx:box.final_idx]
-      #relevant_points = @view points[box.start_idx:box.final_idx]
-      #for k in 0:P
-      #  # likely want to perform an outer product here and sum along one dimension
-      #  #relevant_potentials += sum(((relevant_points .- box.center).^k .* box.a))
-      #    for i = Box(ibox_global).particlelist
+      # Not using outerproducts or creating vectors as too memory intensive
       for idx in box.start_idx:box.final_idx
-        # for forces don't use the first term
         ω_p[idx] = 0
+        diff = points[idx] - box.center
+        tmp = 1.0 
         for k = 1:P
-          # multiply by k because taking derivative
-          ω_p[idx] += k*box.b[k]*(points[idx] - box.center)^(k-1);
+          ω_p[idx] += k*box.b[k]*tmp
+          tmp *= diff
         end
       end        
+
+      # VECTOR FORMAT (slower due to allocation, preallocating requires searching through boxes for max number of points in a box)
+      # idxs = box.start_idx:box.final_idx
+      # ω_p[idxs] .= zero(ComplexF64)
+      # diff = points[idxs] .- box.center
+      # tmp = ones(ComplexF64, length(diff)) 
+      # @inbounds @simd for k = 1:P
+      #   ω_p[idxs] .+= k*box.b[k].*tmp
+      #   tmp .*= diff
+      # end
+
+      # UNOPTIMIZED
+      #for idx in box.start_idx:box.final_idx
+      #  ω_p[idx] = 0
+      #  for k = 1:P
+      #    ω_p[idx] += k*box.b[k]*(points[idx] - box.center)^(k-1);
+      #  end
+      #end        
     end
   end
-  #println(potentials)
 end
 
 
