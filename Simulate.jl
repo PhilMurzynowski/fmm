@@ -19,7 +19,7 @@ const G = 1e-2
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 2
+const TIMESTEPS = 1
 # number of bodies
 const N = 1000
 # number of past positions saved
@@ -27,7 +27,7 @@ const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct
 const TREE_DEPTH = 3
 # number of terms to keep in multipole expansion
-const P = 33
+const P = 32 # keeping multiple of 4 for easier vectorization
 
 function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, num_past_positions=NUM_PAST_POSITIONS)
   gr(reuse=true, size = (1000, 1000))

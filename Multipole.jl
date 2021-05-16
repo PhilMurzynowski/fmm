@@ -8,6 +8,9 @@ Upward pass components: P2M, M2M
 Downwd pass components: M2L, L2L, NNC   """
 
 
+using LoopVectorization
+
+
 include("Quadtree.jl")
 
 """
@@ -190,8 +193,8 @@ function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
           # first term
           box.b[l] += -1/l*inter_box.a[1]*powers[l]
           # summation term
-          for k in 1:P
-            box.b[l] += powers[l] * (binomial_table[k, k+l] * csa[k])
+          @inbounds @simd for k in 1:P
+            box.b[l] += powers[l] * binomial_table[k, k+l] * csa[k]
           end
         end
       end
