@@ -159,10 +159,10 @@ function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
   
   # propogate all the way to the leaf level (inclusive)
   for depth in 2:quadtree.tree_depth
-    for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
+    @inbounds for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
       box::Box = quadtree.tree[global_idx]
       box.b .= zero(box.b[1])
-      for interaction_idx in box.interaction_idxs
+      @inbounds for interaction_idx in box.interaction_idxs
         # interacting box
         inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
         # common sub array 
