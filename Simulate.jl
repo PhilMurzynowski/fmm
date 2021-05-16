@@ -15,11 +15,11 @@ include("BinomialTable.jl")
 # normal value is 6.67408e-11
 const G = 1e-2
 # softening paramter to avoid a -> inf when particles close
- const S = 1e-32
+const S = 1e-32
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 1
+const TIMESTEPS = 500
 # number of bodies
 const N = 1000
 # number of past positions saved
@@ -61,6 +61,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     #println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
 
     # TEST
+    """
     println("Testing")
     forces = [real(ω_p), -imag(ω_p)]
     correct_ω_p = similar(ω_p)
@@ -74,6 +75,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     #println(correct_forces)
     #println(forces)
     @assert correct_forces ≈ forces 
+    """
 
     #VERIFY: verlet integration
     #OPTIMIZE : column layout, can reinterpte complex as two reals
