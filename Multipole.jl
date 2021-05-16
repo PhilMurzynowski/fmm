@@ -23,7 +23,6 @@ Wrapper for all components
 function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
   # upward pass
   P2M!(quadtree, points, masses)
-  #M2M!(quadtree, binomial_table)
   M2M!(quadtree, binomial_table)
   # downward pass
   M2L!(quadtree, binomial_table)
@@ -48,6 +47,7 @@ Upward pass functions
 # OPTIMIZED:      77.243 μs (128 allocations: 42.16 KiB)
 function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
+  p = length(quadtree.tree[1].b)
   # determine multipole expansion at all leaf boxes
   for global_idx in leaf_offset+1:length(quadtree.tree)
     box::Box = quadtree.tree[global_idx]
@@ -60,7 +60,7 @@ function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
       # OPTIMIZED array power operation
       diff = relevant_points .- box.center 
       tmp = diff.*relevant_masses
-      for k in 1:P
+      for k in 1:p
         i = k + 1
         box.a[i] = -1/k * sum(tmp)
         tmp .*= diff
@@ -74,7 +74,7 @@ function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
       # end
     else 
       # PROFILE, can track if already 0 so don't need to do this perhaps, but that would add branching
-      box.a = zeros(P+1)
+      box.a = zeros(p+1)
     end
   end
 end
@@ -113,7 +113,7 @@ function M2M!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
         powers[1] = 1.0
         powers[2] = diff
 
-        for l in 1:P
+        for l in 1:p
           i = l + 1
           parent_box.a[i] -= 1/l*child_box.a[1]*powers[i]
           powers[i+1] = powers[i]*diff
@@ -156,9 +156,10 @@ end
 function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
   # Add contribution of boxes in interaction list to expansion of potential of each box
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
+  p = length(quadtree.tree[1].b)
 
   # PREALLOCATE all tmps used in multipole computation
-  csa::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, P)
+  csa::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, p)
   powers = Array{ComplexF64, 1}(undef, P+1)
   
   # propogate all the way to the leaf level (inclusive)
@@ -185,18 +186,18 @@ function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
         diff = inter_box.center - box.center
         powers[1] = 1/diff
         sign = -1
-        for i in 1:P
+        for i in 1:p
           csa[i] = sign*inter_box.a[i+1] * powers[i]
           powers[i+1] = powers[i]/diff
           sign *= -1
         end
-        @inbounds for l in 1:P
+        @inbounds for l in 1:p
           # first term
           box.b[l] -= 1/l*inter_box.a[1]*powers[l]
           # summation term
           tmp = 0.0 + 0.0im
           # CURIOUS, fastest without @simd and @inbounds, @avx was not working at the time
-          for k in 1:P
+          for k in 1:p
              tmp += binomial_table[k, k+l] * csa[k]
           end
           box.b[l] += powers[l]*tmp
@@ -217,8 +218,10 @@ function L2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2}, binomial_tabl
   # propogate down information to children
   # do for every level above leaf level
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
+  p = length(quadtree.tree[1].b)
+
   # PREALLOCATE
-  powers = Array{ComplexF64, 1}(undef, P)
+  powers = Array{ComplexF64, 1}(undef, p)
   powers[1] = 1.0
 
   for depth in 2:quadtree.tree_depth-1
@@ -231,11 +234,11 @@ function L2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2}, binomial_tabl
         # OPTIMIZED
         diff = child_box.center - parent_box.center
         powers[2] = diff
-        @inbounds @simd for i in 3:P
+        @inbounds @simd for i in 3:p
           powers[i] = powers[i-1]*diff
         end
-        for l in 1:P
-          @inbounds @simd for k in l:P
+        for l in 1:p
+          @inbounds @simd for k in l:p
             # transposed binomial table for different access pattern
             # May be useful if start using BigInts
             # Normal access pattern:
@@ -270,6 +273,8 @@ function L2P!(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
   # NOTE: @inbounds and @simd didn't make any performance difference here
   
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
+  p = length(quadtree.tree[1].b)
+
   for global_idx in leaf_offset+1:length(quadtree.tree)
     box::Box = quadtree.tree[global_idx]
     if (boxHasPoints(box))
@@ -278,7 +283,7 @@ function L2P!(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
         ω_p[idx] = 0
         diff = points[idx] - box.center
         tmp = 1.0 
-        for k = 1:P
+        for k = 1:p
           ω_p[idx] += k*box.b[k]*tmp
           tmp *= diff
         end

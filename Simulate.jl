@@ -43,8 +43,6 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
   preallocated_mtx::Array{ComplexF64, 2} = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
 
   for i ∈ 1:timesteps
-    # NOTE: make sure updated 
-    #println(pos_memory)
     curr_points = @view pos_memory[:, curr_idx]
     prev_points = @view pos_memory[:, prev_idx]
    
