@@ -1,6 +1,8 @@
 
 """ Plot accuracy of Fast Multipole Method """
 
+# Have some warnings due to ambiguous scope to clean up
+
 
 using LinearAlgebra
 using Plots
@@ -29,7 +31,7 @@ const TREE_DEPTH = 3
 # System was designed around the assumption of constant P (number of multipole terms),
 # so will have to do some inefficient rebuilds, but this inefficiency
 # is currently acceptable for testing purposes.
-Ps = 2:32
+Ps = 2:60
 abs_error = Array{Float64, 1}(undef, length(Ps))
 rel_error = Array{Float64, 1}(undef, length(Ps))
 
@@ -43,8 +45,8 @@ for p in Ps
   pos_memory[:, 2]  = pos_memory[:, 1] .+ 1e-2*tangent_velocity
   masses         = 0.9*rand(Float64, N) .+ 1
   ω_p            = Array{ComplexF64, 1}(undef, N)
-  binomial_table = binomialTable(p)
-  binomial_table_t = binomialTableTransposedSmall(p)
+  binomial_table = largeBinomialTable(p)
+  binomial_table_t = binomialTableTransposed(p)
   preallocated_size = floor(Int, N/2)
   preallocated_mtx::Array{ComplexF64, 2} = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
   next_idx = 3
@@ -56,33 +58,32 @@ for p in Ps
   FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
 
   # TEST
-  println("Testing")
   forces = [real(ω_p), -imag(ω_p)]
   correct_ω_p = similar(ω_p)
   correct_ω_p .= zero(correct_ω_p[1])
   kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(curr_points) .- curr_points)
   foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(curr_points))
-  #show(stdout, "text/plain", kernel_mtx)
-  # can't do simple dot product unfortunately
   correct_ω_p = vec(sum(kernel_mtx.*masses, dims=1))
   correct_forces = [real(correct_ω_p), -imag(correct_ω_p)]
-  #println(correct_forces)
-  #println(forces)
-  #@assert correct_forces ≈ forces 
-
   abs_error[p - Ps[1] + 1] = norm(correct_forces .- forces)
   rel_error[p - Ps[1] + 1] = norm(correct_forces .- forces) / norm(correct_forces)
 end
 
-print("absolute error: ")
-println(abs_error)
-print("relative error: ")
-println(rel_error)
+#print("absolute error: ")
+#println(abs_error)
+#print("relative error: ")
+#println(rel_error)
 gr(size = (1000, 1000))
+Plots.resetfontsizes();
+Plots.scalefontsizes(1.5);
 p1 = plot(Ps, abs_error, label="absolute error")
 p2 = plot!(Ps, rel_error, label="relative error") 
-title!("Number of expansion Terms (P) vs. Error (L2 norm)")
+title!(".\nNumber of expansion Terms (P) vs. Error (L2 norm)\nNumber of bodies: $N")
+p3 = plot!([eps(Float32)], seriestype="hline", label="eps(Float32)")
+p4 = plot!([eps(Float64)], seriestype="hline", label="eps(Float64)")
 yaxis!(:log)
+xlabel!("Number of expansion terms (P)")
+ylabel!("Error (L2 norm)")
 gui() 
 
 

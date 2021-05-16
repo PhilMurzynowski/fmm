@@ -20,6 +20,8 @@ Wrapper for all components
 
 """
 
+# TESTING PARAM:    P = 33, N = 1000
+# CURRENT RUNTIME:  3.783 ms (5490 allocations: 484.67 KiB)
 function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
   # upward pass
   P2M!(quadtree, points, masses)
@@ -85,7 +87,7 @@ end
 # TESTING PARAM:  P = 33, N = 1000
 # UNOPTIMIZED:    2.692 ms (1 allocation: 672 bytes)
 # OPTIMIZED:      61.929 μs (1 allocation: 624 bytes)#
-function M2M!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
+function M2M!(quadtree::Quadtree, binomial_table)
   # propogate up multipole expansions from the leaves
   # to the highest boxes at depth 2
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
@@ -153,14 +155,14 @@ end
 # TESTING PARAM:  P = 33, N = 1000
 # UNOPTIMIZED:    164.646 ms (44521 allocations: 26.49 MiB)
 # OPTIMIZED:      1.565 ms (2 allocations: 1.22 KiB)
-function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
+function M2L!(quadtree::Quadtree, binomial_table)
   # Add contribution of boxes in interaction list to expansion of potential of each box
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
   p = length(quadtree.tree[1].b)
 
   # PREALLOCATE all tmps used in multipole computation
   csa::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, p)
-  powers = Array{ComplexF64, 1}(undef, P+1)
+  powers = Array{ComplexF64, 1}(undef, p+1)
   
   # propogate all the way to the leaf level (inclusive)
   for depth in 2:quadtree.tree_depth
@@ -214,7 +216,7 @@ end
 # TESTING PARAM:  P = 32, N = 1000
 # UNOPTIMIZED:    2.074 ms (0 allocations: 0 bytes)  
 # OPTIMIZED:      47.533 μs (1 allocation: 624 bytes)
-function L2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2}, binomial_table_t::Array{Int64, 2})
+function L2L!(quadtree::Quadtree, binomial_table, binomial_table_t::Array{Int64, 2})
   # propogate down information to children
   # do for every level above leaf level
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)

@@ -19,7 +19,7 @@ const S = 1e-32
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 500
+const TIMESTEPS = 1
 # number of bodies
 const N = 1000
 # number of past positions saved
@@ -38,7 +38,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
   prev_idx = 1
 
   binomial_table = binomialTable(P)
-  binomial_table_t = binomialTableTransposedSmall(P)
+  binomial_table_t = binomialTableTransposed(P)
   preallocated_size = floor(Int, N/2)
   preallocated_mtx::Array{ComplexF64, 2} = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
 
@@ -56,7 +56,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
     # FMM
     FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
-    #println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
+    #@btime FMM!(quadtree, $curr_points, $masses, $ω_p, $binomial_table, $binomial_table_t, $preallocated_mtx)
 
     # TEST
     """
