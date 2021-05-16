@@ -338,6 +338,21 @@ function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array
       foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(relevant_points))
       # can't do simple dot product unfortunately
       relevant_ω_p .+= vec(sum(kernel_mtx.*relevant_masses, dims=1))
+
+      for i in box.start_idx:box.final_idx
+        println("a")
+        for j in box.start_idx:box.final_idx
+          println("b")
+          if (i == j)
+            continue
+          else
+            println("c")
+            println(masses[j] / (points[i] - points[j] + 1e32))
+            ω_p[i] += masses[j] / (points[i] - points[j] + 1e32)
+          end
+        end
+      end
+
       # Contribution from neighbor boxes
       for neighbor_idx in box.neighbor_idxs
         neighbor_box::Box = quadtree.tree[leaf_offset + neighbor_idx]
