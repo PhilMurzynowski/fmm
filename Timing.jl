@@ -32,45 +32,59 @@ const TREE_DEPTH = 3
 # so will have to do some inefficient rebuilds, but this inefficiency
 # is currently acceptable for testing purposes.
 Ps = 2:60
-abs_error = Array{Float64, 1}(undef, length(Ps))
-rel_error = Array{Float64, 1}(undef, length(Ps))
+times = Array{Float64, 1}(undef, length(Ps))
 
 preallocated_size = floor(Int, N/2)
 preallocated_mtx = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
 
+# RUN ONCE FOR FAIR BENCHMARKING
+p = 4
+quadtree = buildQuadtree(TREE_DEPTH, p)
+# Not seeding for accuracy testing, random
+# Random.seed!(2)
+prev_points      = rand(ComplexF64, N)
+tangent_velocity = imag(prev_points .- (0.5 + 0.5im)) .- 1im*real(prev_points .- (0.5 + 0.5im))
+curr_points      = prev_points .+ 1e-2*tangent_velocity
+masses           = 0.9*rand(Float64, N) .+ 1
+ω_p              = Array{ComplexF64, 1}(undef, N)
+binomial_table   = binomialTable(p)
+if (p > 33) 
+  binomial_table = largeBinomialTable(p)
+end
+binomial_table_t = binomialTableTransposed(p)
+updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
+FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
+
 for p in Ps
   quadtree = buildQuadtree(TREE_DEPTH, p)
-  pos_memory = Array{ComplexF64}(undef, N, NUM_PAST_POSITIONS)
   # Not seeding for accuracy testing, random
   # Random.seed!(2)
-  pos_memory[:, 1]  = rand(ComplexF64, N)
-  tangent_velocity = imag(pos_memory[:, 1] .- (0.5 + 0.5im)) .- 1im*real(pos_memory[:, 1] .- (0.5 + 0.5im))
-  pos_memory[:, 2]  = pos_memory[:, 1] .+ 1e-2*tangent_velocity
-  masses         = 0.9*rand(Float64, N) .+ 1
-  ω_p            = Array{ComplexF64, 1}(undef, N)
-  binomial_table = largeBinomialTable(p)
+  prev_points      = rand(ComplexF64, N)
+  tangent_velocity = imag(prev_points .- (0.5 + 0.5im)) .- 1im*real(prev_points .- (0.5 + 0.5im))
+  curr_points      = prev_points .+ 1e-2*tangent_velocity
+  masses           = 0.9*rand(Float64, N) .+ 1
+  ω_p              = Array{ComplexF64, 1}(undef, N)
+  binomial_table   = largeBinomialTable(p)
+  if (p <= 33) 
+    binomial_table = binomialTable(p)
+  end
   binomial_table_t = binomialTableTransposed(p)
-  next_idx = 3
-  curr_idx = 2
-  prev_idx = 1
-  curr_points = @view pos_memory[:, curr_idx]
-  prev_points = @view pos_memory[:, prev_idx]
   updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
-  time = @belapsed FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
+  # Benchmark tools takes too long atm
+  #time = @belapsed FMM!(quadtree, $curr_points, $masses, $ω_p, $binomial_table, $binomial_table_t, $preallocated_mtx)
+  time = @elapsed FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
+  times[p - Ps[1] + 1] = time
 end
 
-#print("absolute error: ")
-#println(abs_error)
-#print("relative error: ")
-#println(rel_error)
 gr(size = (1000, 1000))
 Plots.resetfontsizes();
 Plots.scalefontsizes(1.5);
-p1 = plot(Ps, abs_error, label="absolute error")
-title!(".\nError (L2 norm) vs. Number of expansion Terms (P)\nNumber of bodies: $N, Tree depth: $TREE_DEPTH")
+p1 = scatter(Ps, times, label="")
+title!(".\nFMM Runtime (s) vs. Number of expansion Terms (P)\nNumber of bodies: $N, Tree depth: $TREE_DEPTH")
 #yaxis!(:log)
+ylabel!("FMM Runtime (s)")
 xlabel!("Number of expansion terms (P)")
-ylabel!("Error (L2 norm)")
+ylims!((0, 0.1))
 gui() 
 
 
