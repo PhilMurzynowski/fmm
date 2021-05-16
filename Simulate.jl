@@ -27,7 +27,7 @@ const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct
 const TREE_DEPTH = 3
 # number of terms to keep in multipole expansion
-const P = 32 # keeping multiple of 4 for easier vectorization
+const P = 32 # keeping multiple of 4 for easier vectorization, actually more complicated as often need P+1
 
 function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, num_past_positions=NUM_PAST_POSITIONS)
   gr(reuse=true, size = (1000, 1000))

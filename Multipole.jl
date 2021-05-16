@@ -149,7 +149,7 @@ end
 
 # TESTING PARAM:  P = 33, N = 1000
 # UNOPTIMIZED:    164.646 ms (44521 allocations: 26.49 MiB)
-# OPTIMIZED:      
+# OPTIMIZED:      1.565 ms (2 allocations: 1.22 KiB)
 function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
   # Add contribution of boxes in interaction list to expansion of potential of each box
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
@@ -171,7 +171,7 @@ function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
         # common sub array 
         # skip 0th term as computing force, not potential
         
-        # UNOPTIMIZED
+        # UNOPTIMIZED (main portion, also was not preallocating and using @inbounds previously)
         #csa = (-1).^Ps.*inter_box.a[Ps_idxs]./((inter_box.center - box.center).^Ps)
         #for l in 1:P
         #  # first term
@@ -191,11 +191,14 @@ function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
         end
         @inbounds for l in 1:P
           # first term
-          box.b[l] += -1/l*inter_box.a[1]*powers[l]
+          box.b[l] -= 1/l*inter_box.a[1]*powers[l]
           # summation term
-          @inbounds @simd for k in 1:P
-            box.b[l] += powers[l] * binomial_table[k, k+l] * csa[k]
+          tmp = 0.0 + 0.0im
+          # CURIOUS, fastest without @simd and @inbounds, @avx was not working at the time
+          for k in 1:P
+             tmp += binomial_table[k, k+l] * csa[k]
           end
+          box.b[l] += powers[l]*tmp
         end
       end
     end
