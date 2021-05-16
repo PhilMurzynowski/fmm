@@ -20,7 +20,7 @@ Wrapper for all components
 
 """
 
-function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t)
+function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
   # upward pass
   P2M!(quadtree, points, masses)
   M2M!(quadtree, binomial_table)
@@ -30,8 +30,8 @@ function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial
   # may need the tranpose if want to use BigInt
   L2L!(quadtree, binomial_table, binomial_table_t)
   L2P!(quadtree, points, ω_p)
-  #@btime NNC!(quadtree, $points, $masses, $ω_p)
-  NNC!(quadtree, points, masses, ω_p)
+  @btime NNC!(quadtree, $points, $masses, $ω_p, $preallocated_mtx)
+  #NNC!(quadtree, points, masses, ω_p, preallocated_mtx)
 end
 
 """
@@ -312,14 +312,16 @@ end
 # TESTING PARAM:  P = 32, N = 1000
 # UNOPTIMIZED:    2.159 ms (2000 allocations: 2.31 MiB)
 # OPTIMIZED:      
-
-function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array{ComplexF64, 1})
+function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array{ComplexF64, 1}, preallocated_mtx)
   # Final step in computation
   # The multipole expansions have been passed up the tree from sources.
   # The low rank procedure applied to well separated regions.
   # Now must do O(N^2) computation for close points but since uniform distribution is assumed,
   # then this is designed to be an O(1) computation.
   # Zero out computation with of body with itself as 1/(x-x) = Inf.
+
+  # PREALLOCATE estimated max number of points in leaf box
+  #preallocated_mtx::Array{ComplexF64, 2} = Array{ComplexF64, 2}(undef, N, N)
 
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
   for global_idx in leaf_offset+1:length(quadtree.tree)
@@ -334,31 +336,41 @@ function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array
 
       # OPTIMIZED
       # Contribution from within same box
+      space_needed = box.final_idx - box.start_idx + 1
+      mtx = @view preallocated_mtx[1:space_needed, 1:space_needed]
+      #mtx .= 1 ./ (transpose(relevant_points) .- relevant_points .+ s)
+      mtx .=  transpose(relevant_points) .- relevant_points .+ S
+      mtx .= one(ComplexF64) ./ mtx
+      foreach(i -> mtx[i, i] = zero(mtx[1, 1]), 1:length(relevant_points))
+      # # Can't do simple dot product unfortunately
+      mtx .*= relevant_masses
+      relevant_ω_p .+= vec(sum(mtx, dims=1))
+      # # Contribution from neighbor boxes
+      for neighbor_idx in box.neighbor_idxs
+        neighbor_box::Box = quadtree.tree[leaf_offset + neighbor_idx]
+         if boxHasPoints(neighbor_box)
+           # construct matrix from set of points in box 
+           neighbor_points = @view points[neighbor_box.start_idx:neighbor_box.final_idx]
+           neighbor_masses = @view masses[neighbor_box.start_idx:neighbor_box.final_idx]
+           neighbor_space_needed = neighbor_box.final_idx - neighbor_box.start_idx + 1
+           mtx = @view preallocated_mtx[1:neighbor_space_needed, 1:space_needed]
+           #mtx .= 1 ./ (transpose(relevant_points) .- neighbor_points) .* neighbor_masses
+           mtx .= one(ComplexF64) ./ (transpose(relevant_points) .- neighbor_points)
+           mtx .*= neighbor_masses
+           relevant_ω_p .+= vec(sum(mtx, dims=1))
+         end
+      end
+      
+      # UNOPTIMIZED
+      """
+      # Contribution from within same box
       kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(relevant_points) .- relevant_points .+ 1e-32)
       foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(relevant_points))
-      # can't do simple dot product unfortunately
+      # Can't do simple dot product unfortunately
       relevant_ω_p .+= vec(sum(kernel_mtx.*relevant_masses, dims=1))
-
-      for i in box.start_idx:box.final_idx
-        println("a")
-        for j in box.start_idx:box.final_idx
-          println("b")
-          if (i == j)
-            continue
-          else
-            println("c")
-            println(masses[j] / (points[i] - points[j] + 1e32))
-            ω_p[i] += masses[j] / (points[i] - points[j] + 1e32)
-          end
-        end
-      end
-
       # Contribution from neighbor boxes
       for neighbor_idx in box.neighbor_idxs
         neighbor_box::Box = quadtree.tree[leaf_offset + neighbor_idx]
-         # Evaluate whether branching might be a bigger hit to performance
-         # when assuming uniform distrubition should almost always have points
-         # but also want to avoid zero dimensional arrays
          if boxHasPoints(neighbor_box)
            # construct matrix from set of points in box 
            neighbor_points = @view points[neighbor_box.start_idx:neighbor_box.final_idx]
@@ -366,24 +378,30 @@ function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array
            relevant_ω_p .+= vec(sum(neighbor_masses .* (1 ./ (transpose(relevant_points) .- neighbor_points)), dims=1))
          end
       end
+      """
 
-      # UNOPTIMIZED
-      # Contribution from within same box
-      # kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(relevant_points) .- relevant_points .+ 1e-32)
-      # foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(relevant_points))
-      # # Can't do simple dot product unfortunately
-      # relevant_ω_p .+= vec(sum(kernel_mtx.*relevant_masses, dims=1))
+      # SLOW, turns out it is faster to construct matrices
+      # for i in box.start_idx:box.final_idx
+      #   for j in box.start_idx:box.final_idx
+      #     if i == j
+      #       continue
+      #     else
+      #       ω_p[i] += masses[j] / (points[i] - points[j] + 1e-32)
+      #     end
+      #   end
+      # end
       # # Contribution from neighbor boxes
       # for neighbor_idx in box.neighbor_idxs
       #   neighbor_box::Box = quadtree.tree[leaf_offset + neighbor_idx]
       #    if boxHasPoints(neighbor_box)
-      #      # construct matrix from set of points in box 
-      #      neighbor_points = @view points[neighbor_box.start_idx:neighbor_box.final_idx]
-      #      neighbor_masses = @view masses[neighbor_box.start_idx:neighbor_box.final_idx]
-      #      relevant_ω_p .+= vec(sum(neighbor_masses .* (1 ./ (transpose(relevant_points) .- neighbor_points)), dims=1))
+      #      for i in box.start_idx:box.final_idx
+      #        for j in neighbor_box.start_idx:2:neighbor_box.final_idx
+      #          ω_p[i] += masses[j]* 1 / (points[i] - points[j] + 1e-32)
+      #        end
+      #      end
       #    end
       # end
-
+       
     end
   end 
 end

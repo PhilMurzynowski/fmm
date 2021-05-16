@@ -15,7 +15,7 @@ include("BinomialTable.jl")
 # normal value is 6.67408e-11
 const G = 1e-2
 # softening paramter to avoid a -> inf when particles close
-# const S = 1e-10
+ const S = 1e-32
 # timestep
 const Δt = 1e-2
 # num timesteps
@@ -39,6 +39,8 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
 
   binomial_table = binomialTable(P)
   binomial_table_t = binomialTableTransposedSmall(P)
+  preallocated_size = floor(Int, N/2)
+  preallocated_mtx::Array{ComplexF64, 2} = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
 
   for i ∈ 1:timesteps
     # NOTE: make sure updated 
@@ -55,7 +57,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # have to sort an additional array, velocity, as well
     updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
     # FMM
-    FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t)
+    FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
     #println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
 
     # TEST
