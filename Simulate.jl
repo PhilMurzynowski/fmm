@@ -38,6 +38,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
   prev_idx = 1
 
   binomial_table = binomialTable(P)
+  binomial_table_t = binomialTableTransposedSmall(P)
 
   for i ∈ 1:timesteps
     # NOTE: make sure updated 
@@ -54,7 +55,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # have to sort an additional array, velocity, as well
     updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
     # FMM
-    FMM!(quadtree, curr_points, masses, ω_p, binomial_table)
+    FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t)
     #println(@elapsed FMM!(quadtree, curr_points, masses, ω_p))
 
     # TEST

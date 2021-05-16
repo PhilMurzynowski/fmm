@@ -14,3 +14,15 @@ function binomialTable(n::Int)
   end
   return table
 end
+
+# creates a binomial table of different size
+# and with rows and columns swapped for better access
+function binomialTableTransposedSmall(n::Int)
+  table = Array{Int64, 2}(undef, n, n)
+  for i in 1:n
+    for j in 1:n
+      table[i, j] = binomial(i, j)
+    end
+  end
+  return table
+end

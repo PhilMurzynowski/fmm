@@ -20,13 +20,14 @@ Wrapper for all components
 
 """
 
-function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table)
+function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t)
   # upward pass
   P2M!(quadtree, points, masses)
   M2M!(quadtree, binomial_table)
   # downward pass
-  @btime M2L!(quadtree, $binomial_table)
-  L2L!(quadtree)
+  M2L!(quadtree, binomial_table)
+  @btime L2L!(quadtree, $binomial_table, $binomial_table_t)
+  #L2L!(quadtree, binomial_table, binomial_table_t)
   L2P!(quadtree, points, ω_p)
   NNC!(quadtree, points, masses, ω_p)
 end
@@ -114,6 +115,7 @@ function M2M!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
           i = l + 1
           parent_box.a[i] -= 1/l*child_box.a[1]*powers[i]
           powers[i+1] = powers[i]*diff
+          # TRY @simd and @inbounds, especially here
           for k in 1:l
             j = k + 1
             # PROFILED: binomial is expensive! Use a lookup table as only using small k (30 or 50 and under)!
@@ -155,8 +157,6 @@ function M2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2})
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
 
   # PREALLOCATE all tmps used in multipole computation
-  #Ps = [x for x in 1:P]
-  #Ps_idxs = 2:P+1
   csa::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, P)
   powers = Array{ComplexF64, 1}(undef, P+1)
   
@@ -209,28 +209,47 @@ end
 """ L2L : Local to Local """
 
 
-function L2L!(quadtree::Quadtree)
+# TESTING PARAM:  P = 32, N = 1000
+# UNOPTIMIZED:    2.074 ms (0 allocations: 0 bytes)  
+# OPTIMIZED:      47.533 μs (1 allocation: 624 bytes)
+function L2L!(quadtree::Quadtree, binomial_table::Array{Int64, 2}, binomial_table_t::Array{Int64, 2})
   # propogate down information to children
   # do for every level above leaf level
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
+  # PREALLOCATE
+  powers = Array{ComplexF64, 1}(undef, P)
+  powers[1] = 1.0
+
   for depth in 2:quadtree.tree_depth-1
     for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
       parent_box::Box = quadtree.tree[global_idx]
-      #println()
       for child_idx in parent_box.children_idxs
         child_global_idx::Int = depth_offsets[depth+1] + child_idx
         child_box::Box = quadtree.tree[child_global_idx]
-        # NOTE, may want to vectorize this double loop if possible
+
+        # OPTIMIZED
+        diff = child_box.center - parent_box.center
+        powers[2] = diff
+        @inbounds @simd for i in 3:P
+          powers[i] = powers[i-1]*diff
+        end
         for l in 1:P
-          for k in l:P
-            child_box.b[l] += parent_box.b[k]*binomial(k,l)*(child_box.center - parent_box.center)^(k-l);
+          @inbounds @simd for k in l:P
+            # transposed binomial table for different access pattern
+            # May be useful if start using BigInts
+            # Normal access pattern:
+            # child_box.b[l] += parent_box.b[k]*binomial_table[l+1,k+1]*powers[k-l+1];
+            child_box.b[l] += parent_box.b[k]*binomial_table_t[k,l]*powers[k-l+1];
           end
         end
-        # DEBUG
-        #if depth == 2
-        #  @printf "center: %f + %fi, " real(child_box.center) imag(child_box.center)
-        #  println(child_box.b)
+
+        #UNOPTIMIZED
+        #for l in 1:P
+        #  for k in l:P
+        #    child_box.b[l] += parent_box.b[k]*binomial(k,l)*(child_box.center - parent_box.center)^(k-l);
+        #  end
         #end
+
       end
     end
   end
