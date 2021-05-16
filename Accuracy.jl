@@ -78,7 +78,7 @@ Plots.resetfontsizes();
 Plots.scalefontsizes(1.5);
 p1 = plot(Ps, abs_error, label="absolute error")
 p2 = plot!(Ps, rel_error, label="relative error") 
-title!(".\nNumber of expansion Terms (P) vs. Error (L2 norm)\nNumber of bodies: $N")
+title!(".\nNumber of expansion Terms (P) vs. Error (L2 norm)\nNumber of bodies: $N, Tree depth: $TREE_DEPTH")
 p3 = plot!([eps(Float32)], seriestype="hline", label="eps(Float32)")
 p4 = plot!([eps(Float64)], seriestype="hline", label="eps(Float64)")
 yaxis!(:log)
