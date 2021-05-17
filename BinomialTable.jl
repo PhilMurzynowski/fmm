@@ -38,3 +38,13 @@ function largeBinomialTable(n::Int)
   end
   return table
 end
+
+function largeBinomialTableTransposed(n::Int)
+  table = Array{Int128, 2}(undef, 2*n+1, n+1)
+  for i in 0:n
+    for j in 0:2*n
+      table[j+1, i+1] = binomial(BigInt(j), i)
+    end
+  end
+  return table
+end

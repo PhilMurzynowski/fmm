@@ -22,12 +22,24 @@ Wrapper for all components
 
 # TESTING PARAM:    P = 33, N = 1000
 # CURRENT RUNTIME:  3.783 ms (5490 allocations: 484.67 KiB)
-function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
+function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t, large_binomial_table_t, preallocated_mtx)
+  """
   # upward pass
   P2M!(quadtree, points, masses)
   M2M!(quadtree, binomial_table)
   # downward pass
   M2L!(quadtree, binomial_table)
+  # pass in both binomial and transpose as haven't decided entirely which to use
+  # may need the tranpose if want to use BigInt
+  L2L!(quadtree, binomial_table, binomial_table_t)
+  L2P!(quadtree, points, ω_p)
+  NNC!(quadtree, points, masses, ω_p, preallocated_mtx)
+  """
+
+  P2M!(quadtree, points, masses)
+  M2M!(quadtree, binomial_table)
+  # downward pass
+  @btime M2L!(quadtree, $binomial_table, $large_binomial_table_t)
   # pass in both binomial and transpose as haven't decided entirely which to use
   # may need the tranpose if want to use BigInt
   L2L!(quadtree, binomial_table, binomial_table_t)
@@ -155,7 +167,12 @@ end
 # TESTING PARAM:  P = 33, N = 1000
 # UNOPTIMIZED:    164.646 ms (44521 allocations: 26.49 MiB)
 # OPTIMIZED:      1.565 ms (2 allocations: 1.22 KiB)
-function M2L!(quadtree::Quadtree, binomial_table)
+# UNFORTUNATELY, using BigInt binomial table for high powers of P leads to a jump in runtime for 
+# P = 34
+# 17.214 ms (2 allocations: 1.27 KiB)
+# after introducing another large transposed binomial table and switching loop order obtain:
+# 12.449 ms (2 allocations: 1.27 KiB)
+function M2L!(quadtree::Quadtree, binomial_table, large_binomial_table_t)
   # Add contribution of boxes in interaction list to expansion of potential of each box
   depth_offsets::Array{Int, 1} = getDepthOffsets(quadtree)
   p = length(quadtree.tree[1].b)
@@ -163,46 +180,82 @@ function M2L!(quadtree::Quadtree, binomial_table)
   # PREALLOCATE all tmps used in multipole computation
   csa::Array{ComplexF64, 1} = Array{ComplexF64, 1}(undef, p)
   powers = Array{ComplexF64, 1}(undef, p+1)
+  #tmp = Array{ComplexF64, 1}(undef, p)
   
-  # propogate all the way to the leaf level (inclusive)
-  for depth in 2:quadtree.tree_depth
-    @inbounds for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
-      box::Box = quadtree.tree[global_idx]
-      box.b .= zero(box.b[1])
-      @inbounds for interaction_idx in box.interaction_idxs
-        # interacting box
-        inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
-        # common sub array 
-        # skip 0th term as computing force, not potential
-        
-        # UNOPTIMIZED (main portion, also was not preallocating and using @inbounds previously)
-        #csa = (-1).^Ps.*inter_box.a[Ps_idxs]./((inter_box.center - box.center).^Ps)
-        #for l in 1:P
-        #  # first term
-        #  box.b[l] += -inter_box.a[1]/(l*(inter_box.center - box.center)^l)
-        #  # summation term
-        #  box.b[l] += 1/(inter_box.center - box.center)^l * sum((binomial.(Ps.+l.-1, Ps.-1).*csa))
-        #end
-        
-        # OPTIMIZED
-        diff = inter_box.center - box.center
-        powers[1] = 1/diff
-        sign = -1
-        for i in 1:p
-          csa[i] = sign*inter_box.a[i+1] * powers[i]
-          powers[i+1] = powers[i]/diff
-          sign *= -1
-        end
-        @inbounds for l in 1:p
-          # first term
-          box.b[l] -= 1/l*inter_box.a[1]*powers[l]
-          # summation term
-          tmp = 0.0 + 0.0im
-          # CURIOUS, fastest without @simd and @inbounds, @avx was not working at the time
-          for k in 1:p
-             tmp += binomial_table[k, k+l] * csa[k]
+  if p > 33
+    # propogate all the way to the leaf level (inclusive)
+    for depth in 2:quadtree.tree_depth
+      @inbounds for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
+        box::Box = quadtree.tree[global_idx]
+        box.b .= zero(box.b[1])
+        @inbounds for interaction_idx in box.interaction_idxs
+          inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
+          diff = inter_box.center - box.center
+          powers[1] = 1/diff
+          sign = -1
+          for i in 1:p
+            csa[i] = sign*inter_box.a[i+1] * powers[i]
+            powers[i+1] = powers[i]/diff
+            sign *= -1
           end
-          box.b[l] += powers[l]*tmp
+          # FURTHER OPTIMIZED for large P
+          @inbounds @simd for l in 1:p
+            box.b[l] -= 1/l*inter_box.a[1]*powers[l]
+          end
+          #box.b .= inter_box.a[1] ./ tmp .* powers[1:p]         
+          #tmp .= powers[1:p] .* csa[1:p]
+          @inbounds for k in 1:p
+            @inbounds for l in 1:p
+               #box.b[l] += powers[l] * binomial_table[k, k+l] * csa[k]
+               box.b[l] += powers[l] * large_binomial_table_t[k+l, k] * csa[k]
+            end
+            # Trying to vectorize like this allocates too much memory
+            #box.b[1:p] .+= tmp .* large_binomial_table_t[k:k+p-1, k]
+          end
+        end
+      end
+    end
+  else
+    for depth in 2:quadtree.tree_depth
+      @inbounds for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
+        box::Box = quadtree.tree[global_idx]
+        box.b .= zero(box.b[1])
+        @inbounds for interaction_idx in box.interaction_idxs
+          # interacting box
+          inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
+          # common sub array 
+          # skip 0th term as computing force, not potential
+          
+          # UNOPTIMIZED (main portion, also was not preallocating and using @inbounds previously)
+          #csa = (-1).^Ps.*inter_box.a[Ps_idxs]./((inter_box.center - box.center).^Ps)
+          #for l in 1:P
+          #  # first term
+          #  box.b[l] += -inter_box.a[1]/(l*(inter_box.center - box.center)^l)
+          #  # summation term
+          #  box.b[l] += 1/(inter_box.center - box.center)^l * sum((binomial.(Ps.+l.-1, Ps.-1).*csa))
+          #end
+          
+          # OPTIMIZED
+          diff = inter_box.center - box.center
+          powers[1] = 1/diff
+          sign = -1
+          for i in 1:p
+            csa[i] = sign*inter_box.a[i+1] * powers[i]
+            powers[i+1] = powers[i]/diff
+            sign *= -1
+          end
+
+          @inbounds for l in 1:p
+            # first term
+            box.b[l] -= 1/l*inter_box.a[1]*powers[l]
+            # summation term
+            tmp = 0.0 + 0.0im
+            # CURIOUS, fastest without @simd and @inbounds, @avx was not working at the time
+            for k in 1:p
+               tmp += binomial_table[k, k+l] * csa[k]
+            end
+            box.b[l] += powers[l]*tmp
+          end
         end
       end
     end

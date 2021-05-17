@@ -27,7 +27,7 @@ const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct
 const TREE_DEPTH = 3
 # number of terms to keep in multipole expansion
-const P = 32 # keeping multiple of 4 for easier vectorization, actually more complicated as often need P+1
+const P = 33 # keeping multiple of 4 for easier vectorization, actually more complicated as often need P+1
 
 function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, num_past_positions=NUM_PAST_POSITIONS)
   gr(reuse=true, size = (1000, 1000))
@@ -39,6 +39,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
 
   binomial_table = binomialTable(P)
   binomial_table_t = binomialTableTransposed(P)
+  large_binomial_table_t = largeBinomialTableTransposed(P)
   preallocated_size = floor(Int, N/2)
   preallocated_mtx::Array{ComplexF64, 2} = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
 
@@ -55,11 +56,10 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # have to sort an additional array, velocity, as well
     updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
     # FMM
-    FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
+    FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, large_binomial_table_t, preallocated_mtx)
     #@btime FMM!(quadtree, $curr_points, $masses, $ω_p, $binomial_table, $binomial_table_t, $preallocated_mtx)
 
     # TEST
-    """
     println("Testing")
     forces = [real(ω_p), -imag(ω_p)]
     correct_ω_p = similar(ω_p)
@@ -73,7 +73,6 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     #println(correct_forces)
     #println(forces)
     @assert correct_forces ≈ forces 
-    """
 
     #VERIFY: verlet integration
     #OPTIMIZE : column layout, can reinterpte complex as two reals
