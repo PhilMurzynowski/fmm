@@ -23,23 +23,11 @@ Wrapper for all components
 # TESTING PARAM:    P = 33, N = 1000
 # CURRENT RUNTIME:  3.783 ms (5490 allocations: 484.67 KiB)
 function FMM!(quadtree::Quadtree, points, masses, ω_p, binomial_table, binomial_table_t, large_binomial_table_t, preallocated_mtx)
-  """
   # upward pass
   P2M!(quadtree, points, masses)
   M2M!(quadtree, binomial_table)
   # downward pass
-  M2L!(quadtree, binomial_table)
-  # pass in both binomial and transpose as haven't decided entirely which to use
-  # may need the tranpose if want to use BigInt
-  L2L!(quadtree, binomial_table, binomial_table_t)
-  L2P!(quadtree, points, ω_p)
-  NNC!(quadtree, points, masses, ω_p, preallocated_mtx)
-  """
-
-  P2M!(quadtree, points, masses)
-  M2M!(quadtree, binomial_table)
-  # downward pass
-  @btime M2L!(quadtree, $binomial_table, $large_binomial_table_t)
+  M2L!(quadtree, binomial_table, large_binomial_table_t)
   # pass in both binomial and transpose as haven't decided entirely which to use
   # may need the tranpose if want to use BigInt
   L2L!(quadtree, binomial_table, binomial_table_t)
