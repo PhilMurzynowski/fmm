@@ -34,8 +34,9 @@ end
 #θs = exp10.(0.5:-2.5:-3.0)
 θs = [0.5, 1.0]
 θs_sq = [x^2 for x in θs]
+start_theta = θs[1]
 
-Ns = exp10.(1:0.5:2)
+Ns = exp10.(1:0.25:2)
 
 flopcounts = Array{Float64, 2}(undef, length(Ns), length(θs))
 
@@ -67,6 +68,14 @@ end
 
 title!(".\nBarnes Hut FlopCount vs. Number of bodies (N)\n")
 #yaxis!(:log)
+gr(size = (1000, 1000))
+Plots.resetfontsizes();
+Plots.scalefontsizes(1.5);
+p = scatter(Ns, flopcounts[:, 1], label="θ: $start_theta")
+for i in 2:length(θs)
+  θ = θs[i]
+  scatter!(Ns, flopcounts[:, i], label="θ: $θ")
+end
 ylabel!("Barnes Hut Flopcount")
 xlabel!("Number of bodies (N)")
 # Sometimes may want to set this
