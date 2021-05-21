@@ -116,7 +116,7 @@ function generate_tree(particles::Array{Particle,1})
     #    # Recursively compute tree of particles and return that tree
     #    generate_tree_helper(particles, size, corner, false, Array{Tuple{Float64,Array{Float64,1}},1}[])
     #end
-    generate_tree_helper(particles, size, corner, Array{Tuple{Float64,Array{Float64,1}},1}[])
+    generate_tree_helper(particles, size, corner)
 end
 
 """
@@ -125,10 +125,9 @@ Generate subtree of Barnes Hut quadtree given a list of particles and the corner
 size of a square region of space. Optionally save coordinates of this region in
 the array `boxes`. Helper function for `generate_tree`.
 
-ELIMINATED save_boxes functionality for simplicity
+ELIMINATED save_boxes functionality for simplicity along with boxes as that was the only usecase
 """
-function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corner::Array{Float64,1},
-                              boxes::Array{Tuple{Float64,Array{Float64,1}},1})
+function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corner::Array{Float64,1})
     # If saving boxes, save current box coordinates
     #if save_boxes
     #    push!(boxes_threaded[Threads.threadid()], (size, corner))
@@ -180,7 +179,7 @@ function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corne
         for quad = 1:4
             #Threads.@spawn children[oct] = generate_tree_helper(octants[oct], size/2, new_corners[oct],
             #                                                    save_boxes, boxes_threaded)
-            children[quad] = generate_tree_helper(quadrants[quad], size/2, new_corners[oct])
+            children[quad] = generate_tree_helper(quadrants[quad], size/2, new_corners[quad])
         end
         
         # Return node
