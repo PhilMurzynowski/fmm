@@ -135,6 +135,7 @@ function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corne
     #if save_boxes
     #    push!(boxes_threaded[Threads.threadid()], (size, corner))
     #end
+    #println(size)
     
     if length(particles) == 0
         # Base case 1: if no particles in quadrant, return empty leaf node
@@ -232,7 +233,7 @@ function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
     #G::Float64 = 6.67430e-11
     #((G * mass) / ((sum(r.^2)+ϵ^2)^(3/2))) .* r
     # don't multiply by G here for consistency with FMM implementation
-    mass ./ (r .+ S)
+    mass ./ (-r .+ S)
 end
 
 """
