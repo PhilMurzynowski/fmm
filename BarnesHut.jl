@@ -204,7 +204,9 @@ step.
   simulation (keyword argument).
 - `acc_func(mass::Float64, r::Array{Float64,1}) = grav_acc`: calculates particle
   acceleration from mass and distance vector.
-"""
+
+SCRAPPED, will be using completely different simulation pipeline
+
 function simulate!(particles::Array{Particle,1}, steps::Int64;
                    Δt::Float64 = 0.1, θ::Float64 = 0.5, acc_func = grav_acc)
     # Initialize array of snapshots of particles at each time step
@@ -225,12 +227,15 @@ function simulate!(particles::Array{Particle,1}, steps::Int64;
     # Return frames
     frames
 end
+"""
 
 """
     vel_step!(particles, tree, Δt, θ, acc_func)
 Calculate the acceleration of each particle using `net_acc` and approximate new
 velocity using `Δt`.
-"""
+
+SCRAPPED, will be using completely different simulation pipeline
+
 function vel_step!(particles::Array{Particle,1}, tree::Node, Δt::Float64, θ::Float64, acc_func)
     # Calculate acceleration and approximately advance velocity (using threading)
     @sync for particle in particles
@@ -239,12 +244,14 @@ function vel_step!(particles::Array{Particle,1}, tree::Node, Δt::Float64, θ::F
         end
     end
 end
+"""
 
 """
     step!(particles, tree, Δt, θ, acc_func)
 Calculate the acceleration of each particle using `net_acc` and approximate new
 velocity and position using `Δt`.
-"""
+
+SCRAPPED, will be using completely different simulation pipeline
 function step!(particles::Array{Particle,1}, tree::Node, Δt::Float64, θ::Float64, acc_func)
     # Calculate acceleration, and approximately advance velocity and position (using threading)
     @sync for particle in particles
@@ -254,6 +261,7 @@ function step!(particles::Array{Particle,1}, tree::Node, Δt::Float64, θ::Float
         end
     end
 end
+"""
 
 """
     net_acc(particle, node, θ, acc_func)
