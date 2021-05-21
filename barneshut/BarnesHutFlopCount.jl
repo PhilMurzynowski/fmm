@@ -14,7 +14,7 @@ const Δt = 1e-2
 # num timesteps
 const TIMESTEPS = 1
 # number of bodies
-const N = 1000
+# const N = 1000
 
 
 include("BarnesHut.jl")
@@ -39,8 +39,10 @@ Ns = exp10.(1:0.5:2)
 
 flopcounts = Array{Float64, 2}(undef, length(Ns), length(θs))
 
+# warning, accidentally swapped i and j
 for j in 1:length(θs)
   for i in 1:length(Ns)
+    N = trunc(Int, Ns[i])
     prev_points = rand(Float64, 2, N)
     tangent_velocity = similar(prev_points)
     tangent_velocity[1, :] = prev_points[2, :] .- 0.5
@@ -53,11 +55,12 @@ for j in 1:length(θs)
     acc = similar(curr_points)
     particles = [Particle(curr_points[:, i], prev_points[:, i], masses[i]) for i in 1:N]
 
-    θ_sq = θs_sq[i]
+    θ_sq = θs_sq[j]
 
     barnesHutUpdate!(acc, particles, θ_sq)
     flopCounter = @count_ops barnesHutUpdate!($acc, $particles, $θ_sq)
     flops = sumAllFlops(flopCounter)
+    println(flops)
     flopcounts[i, j] = flops
   end
 end
