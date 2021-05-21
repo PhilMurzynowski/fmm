@@ -275,10 +275,11 @@ function net_acc(particle::Particle, node::Union{Node, Nothing}, θ::Float64, ac
     # Recusively calculates net acceleration on a particle given a particle tree
     if node == nothing
         # Base case 1: if tree is empty, return 0 acceleration
-        zeros(Float64, 3)
+        #zeros(Float64, 3)
+        zeros(Float64, 2)
     else
         # Recursive case, Barnes Hut method
-        s = node.size                            # Width of the cube that this node represents
+        s = node.size                            # Width of the square that this node represents
         r = node.center_of_mass .- particle.pos  # Vector from particle to node center of mass
         if s/√sum(r.^2) < θ
             # Base case 2: if node size divided by distance is less than threshold θ,
@@ -301,7 +302,9 @@ MODIFIED: using global constants, G, and S for gravitational constant and soften
 function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
     # Calculate gravitational acceleration, using node center of mass
     # and softening factor ϵ (to prevent blow up at d2 = 0)
-    G::Float64 = 6.67430e-11
+    #G::Float64 = 6.67430e-11
+    #((G * mass) / ((sum(r.^2)+ϵ^2)^(3/2))) .* r
+    # don't multiply by G here for consistency with FMM implementation
     ((G * mass) / ((sum(r.^2)+ϵ^2)^(3/2))) .* r
 end
 
@@ -312,7 +315,8 @@ end
     show_particles(particles, θ = 30.0, ϕ = 30.0)
 Using the `Plots` package, display an array of particles in 3D with azimuthal
 camera angle θ and elevation angle ϕ.
-"""
+
+SCRAPPED, will use own
 function show_particles(particles::Array{Particle,1}, θ::Float64 = 30.0, ϕ::Float64 = 30.0)
     scatter([Tuple(p.pos) for p = particles],
         lims = (-1, 1),
@@ -322,11 +326,12 @@ function show_particles(particles::Array{Particle,1}, θ::Float64 = 30.0, ϕ::Fl
         background_color = :black,
         marker = (:circle, 3, 0.8, :white, stroke(0)))
 end
+"""
 
 """
     show_quadview(particles)
 Display four views of the particles in 3D at different camera angles.
-"""
+
 function show_quadview(particles::Array{Particle,1})
     scatter([Tuple(p.pos) for p = particles],
         lims = (-1, 1),
@@ -356,11 +361,11 @@ function show_quadview(particles::Array{Particle,1})
         marker = (:circle, 3, 0.8, :white, stroke(0)),
         subplot = 4)
 end
+"""
 
 """
     show_boxes(particles)
 Calculate and display in 3D the cubes represented by the Barnes Hut octree.
-"""
 function show_boxes(particles::Array{Particle,1})
     p = scatter([Tuple(p.pos) for p = particles],
         camera = (30.0, 30.0),
@@ -378,6 +383,7 @@ function show_boxes(particles::Array{Particle,1})
     end
     p
 end
+"""
 
 """
     animate_frames(frames, frame_rate = 1, file_name = "animation"; θ = 30.0, ϕ = 30.0, quadview = false)
@@ -385,7 +391,6 @@ Plot particles for every `frame_rate` frames resulting from a Barnes Hut
 simulation, and generate a gif file of this animation with a custom name.
 Optionally, specify azimuthal camera angle θ and elevation angle ϕ, or set
 quadview to `true` in order to animate at four different angles.
-"""
 function animate_frames(frames::Array{Array{Particle,1},1}, frame_rate::Int64 = 1, file_name = "animation";
                         θ::Float64 = 30.0, ϕ::Float64 = 30.0, quadview::Bool = false)
     anim = Animation()
@@ -399,6 +404,7 @@ function animate_frames(frames::Array{Array{Particle,1},1}, frame_rate::Int64 = 
     end
     gif(anim, "$file_name.gif")
 end
+"""
 
 
 # Generate Random Particles
@@ -407,7 +413,9 @@ end
     rand_particles(num_particles::Int64)
 Generate `num_particles` random particles using a distribution similar to a
 disk-shaped galaxy.
-"""
+
+SCRAPPED, will use own
+
 function rand_particles(num_particles::Int64)
     particles = Particle[]
     for i = 1:num_particles
@@ -420,3 +428,4 @@ function rand_particles(num_particles::Int64)
     end
     particles
 end
+"""

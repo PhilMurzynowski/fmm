@@ -4,8 +4,8 @@
 In a 2D plane gravitational force takes the form 1 / (x - y), which follows
 from a log(x - y) potential function where x and y are complex.
 
-As a matter of fact optimize out the last mass multiplication so just calculating acceleration instead of
-calculating force and then diving out mass again.
+# As a matter of fact optimize out the last mass multiplication so just calculating acceleration instead of
+# calculating force and then diving out mass again.
 
 Upward pass components: P2M, M2M
 Downwd pass components: M2L, L2L, NNC   """
@@ -109,6 +109,9 @@ function M2M!(quadtree::Quadtree, binomial_table)
         powers[2] = diff
 
         for i in 1:p
+          parent_box.outer_exp[i+1] -= 1/i*child_box.outer_exp[1]*powers[i+1]
+          powers[i+2] = powers[i+1]*diff
+          @inbounds for j in 1:i
           parent_box.outer_exp[i+1] -= 1/i*child_box.outer_exp[1]*powers[i+1]
           powers[i+2] = powers[i+1]*diff
           @inbounds for j in 1:i
@@ -307,9 +310,6 @@ end
 function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array{ComplexF64, 1}, preallocated_mtx)
   # Final step in computation
   # The multipole expansions have been passed up the tree from sources.
-  # The low rank procedure applied to well separated regions.
-  # Now must do O(N^2) computation for close points but since uniform distribution is assumed,
-  # then this is designed to be an O(1) computation.
   # Zero out computation with of body with itself as 1/(x-x) = Inf.
 
   # PREFETCH full preallocated mtx

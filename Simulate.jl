@@ -61,7 +61,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
 
     # TEST
     """
-    # As a matter of fact optimize out the last mass multiplication so just calculating acceleration instead of
+    # As a matter of fact optimize out the last mass multiplication so just calculating acceleration without G instead of
     # calculating force and then diving out mass again.
     println("Testing")
     forces = [real(ω_p), -imag(ω_p)]

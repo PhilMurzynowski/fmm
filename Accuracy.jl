@@ -60,7 +60,7 @@ for p in Ps
   FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, large_binomial_table_t, preallocated_mtx)
 
   # TEST
-  # As a matter of fact optimize out the last mass multiplication so just calculating acceleration instead of
+  # As a matter of fact optimize out the last mass multiplication so just calculating acceleration without G instead of
   # calculating force and then diving out mass again.
   forces = [real(ω_p), -imag(ω_p)]
   correct_ω_p = similar(ω_p)
