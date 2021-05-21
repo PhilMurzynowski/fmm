@@ -4,6 +4,10 @@
     Credit to: https://github.com/alexhad6/ParallelBarnesHut.jl
 
     Ported to serial, two dimensional code for purposes of flopcount comparison to FMM using GFlops.jl.
+    Converting to serial may not be necessary, but easier to debug and want to guarantee nothing is affecting
+    flop count.
+
+    This code is actually not that optimized turns out, flop count will be much better measurement of performance than runtime.
 """
 
 # Imports
@@ -23,11 +27,14 @@ export rand_particles
 
 # Structs
 #
-""" NEW """
+""" NEW 
+Scrapped, am keeping points represented as arrays as don't feel like
+writing broadcasting atm
 struct Point
   x::Float64
   y::Float64
 end
+"""
 
 """
 Represents a particle in a Barnes Hut simulation. For a galaxy simulation, a
@@ -39,7 +46,7 @@ MODIFIED:
 mutable struct Particle
     "Position coordinates of a particle (in meters)."
     pos::Point
-    prev_pos::Point
+    prev_pos::Array{Float64, 1}
 
     "Mass of a particle (in kilograms)."
     mass::Float64
@@ -52,6 +59,9 @@ space and stores the mass and center of mass of the contained particles.
 
 
 
+"""
+MODIFIED to use Point
+"""
 struct Node
     "Side length of the cubical region of space represented by a node."
     size::Float64
@@ -60,7 +70,7 @@ struct Node
     total_mass::Float64
     
     "Center of mass of the particles contained in the region represented by a node."
-    center_of_mass::Array{Float64,1}
+    center_of_mass::Array{Float64, 1}
     
     "Children of a node in the octree."
     children::Array{Union{Node, Nothing},1}
@@ -73,8 +83,11 @@ end
     generate_tree(particles; return_boxes = false)
 Generate the Barnes Hut quadtree for a given array of particles. Optionally
 return coordinates of the boxes represented by the nodes in the octree.
+
+ELIMINATED return boxes for simplicity
 """
-function generate_tree(particles::Array{Particle,1}, return_boxes::Bool = false)
+#function generate_tree(particles::Array{Particle,1}, return_boxes::Bool = false)
+function generate_tree(particles::Array{Particle,1})
     # Calculate bounds of a box enclosing all particles
     # SKIP as for fair comparison with FMM will do box with corners (0, 0) & (1, 1)
     # As FMM already assumes a space of that size
@@ -88,42 +101,45 @@ function generate_tree(particles::Array{Particle,1}, return_boxes::Bool = false)
     #corner = [minx, miny, minz]
     corner = [0.0, 0.0]
     
-    if return_boxes
-        # Recursively compute tree of particles and return coordinates of boxes
-        boxes = Tuple{Float64,Array{Float64,1}}[]
-        # SERIAL only
-        #boxes_threaded = [Tuple{Float64,Array{Float64,1}}[] for i = 1:Threads.nthreads()]
-        #generate_tree_helper(particles, size, corner, return_boxes, boxes_threaded)
-        generate_tree_helper(particles, size, corner, return_boxes, boxes)
-        #for thread = eachindex(boxes_threaded)
-        #   append!(boxes, boxes_threaded[thread])
-        #end
-        boxes
-    else
-        # Recursively compute tree of particles and return that tree
-        generate_tree_helper(particles, size, corner, false, Array{Tuple{Float64,Array{Float64,1}},1}[])
-    end
+    #if return_boxes
+    #    # Recursively compute tree of particles and return coordinates of boxes
+    #    boxes = Tuple{Float64,Array{Float64,1}}[]
+    #    # SERIAL only
+    #    #boxes_threaded = [Tuple{Float64,Array{Float64,1}}[] for i = 1:Threads.nthreads()]
+    #    #generate_tree_helper(particles, size, corner, return_boxes, boxes_threaded)
+    #    generate_tree_helper(particles, size, corner, return_boxes, boxes)
+    #    #for thread = eachindex(boxes_threaded)
+    #    #   append!(boxes, boxes_threaded[thread])
+    #    #end
+    #    boxes
+    #else
+    #    # Recursively compute tree of particles and return that tree
+    #    generate_tree_helper(particles, size, corner, false, Array{Tuple{Float64,Array{Float64,1}},1}[])
+    #end
+    generate_tree_helper(particles, size, corner, Array{Tuple{Float64,Array{Float64,1}},1}[])
 end
 
 """
-    generate_tree_helper(particles, size, corner, save_boxes, boxes_threaded)
-Generate subtree of Barnes Hut octree given a list of particles and the corner
-size of a cubical region of space. Optionally save coordinates of this region in
-the array `boxes_threaded`. Helper function for `generate_tree`.
+    generate_tree_helper(particles, size, corner, save_boxes, boxes)
+Generate subtree of Barnes Hut quadtree given a list of particles and the corner
+size of a square region of space. Optionally save coordinates of this region in
+the array `boxes`. Helper function for `generate_tree`.
+
+ELIMINATED save_boxes functionality for simplicity
 """
 function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corner::Array{Float64,1},
-                              save_boxes::Bool, boxes_threaded::Array{Array{Tuple{Float64,Array{Float64,1}},1},1})
+                              boxes::Array{Tuple{Float64,Array{Float64,1}},1})
     # If saving boxes, save current box coordinates
-    if save_boxes
-        push!(boxes_threaded[Threads.threadid()], (size, corner))
-    end
+    #if save_boxes
+    #    push!(boxes_threaded[Threads.threadid()], (size, corner))
+    #end
     
     if length(particles) == 0
-        # Base case 1: if no particles in octant, return empty leaf node
-        Node(size/2, 0, corner .+ size/2, [nothing for i = 1:8])
+        # Base case 1: if no particles in quadrant, return empty leaf node
+        Node(size/2, 0, corner .+ size/2, [nothing for i = 1:4])
     elseif length(particles) == 1
         # Base case 2: if one particle in octant, return leaf node with that particle
-        Node(size/2, particles[1].mass, particles[1].pos, [nothing for i = 1:8])
+        Node(size/2, particles[1].mass, particles[1].pos, [nothing for i = 1:4])
     else
         # Recursive case
         
@@ -131,34 +147,40 @@ function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corne
         total_mass = sum(particle.mass for particle in particles)
         center_of_mass = sum(particle.mass .* particle.pos for particle in particles) / total_mass
         
-        # Sort particles into 8 octants (using threading)
-        octants = [Particle[] for oct = 1:8]
-        octants_threaded = [[Particle[] for oct = 1:8] for thread = 1:Threads.nthreads()]
-        new_corners = vec([corner + [i, j, k] for i = (0, size/2), j = (0, size/2), k = (0, size/2)])
-        @sync for particle in particles
-            Threads.@spawn begin
-                oct_num = 0
-                for oct = 1:8
-                    if all(new_corners[oct] .<= particle.pos .<= new_corners[oct] .+ size/2)
-                        oct_num = oct
+        # Sort particles into 4 quadrants (not using threading)
+        quadrants = [Particle[] for quad = 1:4]
+        #octants_threaded = [[Particle[] for oct = 1:8] for thread = 1:Threads.nthreads()]
+        new_corners = vec([corner + [i, j] for i = (0, size/2), j = (0, size/2)])
+        #@sync for particle in particles
+        for particle in particles
+            #Threads.@spawn begin
+            begin
+                quad_num = 0
+                for quad = 1:4
+                    if all(new_corners[quad] .<= particle.pos .<= new_corners[quad] .+ size/2)
+                        quad_num = quad
                     end
                 end
-                if oct_num != 0
-                    push!(octants_threaded[Threads.threadid()][oct_num], particle)
-                end
+                #if oct_num != 0
+                #    push!(octants_threaded[Threads.threadid()][oct_num], particle)
+                #end
+                # SERIAL EQUIVALENT to commented out sections above and below
+                push!(quadrants[quad_num], particle)
             end
         end
-        for thread = eachindex(octants_threaded)
-            for oct = 1:8
-               append!(octants[oct], octants_threaded[thread][oct])
-            end
-        end
+        #for thread = eachindex(octants_threaded)
+        #    for oct = 1:8
+        #       append!(octants[oct], octants_threaded[thread][oct])
+        #    end
+        #end
         
-        # Calculate child nodes recursively (using threading)
-        children::Array{Union{Node, Nothing},1} = fill(nothing, 8)
-        @sync for oct = 1:8
-            Threads.@spawn children[oct] = generate_tree_helper(octants[oct], size/2, new_corners[oct],
-                                                                save_boxes, boxes_threaded)
+        # Calculate child nodes recursively (NOT using threading)
+        children::Array{Union{Node, Nothing},1} = fill(nothing, 4)
+        #@sync for oct = 1:8
+        for quad = 1:4
+            #Threads.@spawn children[oct] = generate_tree_helper(octants[oct], size/2, new_corners[oct],
+            #                                                    save_boxes, boxes_threaded)
+            children[quad] = generate_tree_helper(quadrants[quad], size/2, new_corners[oct])
         end
         
         # Return node
