@@ -20,7 +20,8 @@ const N = 1000
 include("BarnesHut.jl")
 
 
-θs = [x for x in 0.2:0.02:5.0]
+#θs = [x for x in 0.0:0.:5.0]
+θs = exp10.(-3:0.5:0.5)
 θs_sq = [x^2 for x in θs]
 #Ns = exp10.(2:0.5:3)
 
