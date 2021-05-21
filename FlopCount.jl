@@ -22,7 +22,7 @@ const Δt = 1e-2
 # num timesteps
 const TIMESTEPS = 1
 # number of bodies
-const N = 100
+# const N = 100
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 
@@ -42,10 +42,12 @@ end
 # so will have to do some inefficient rebuilds, but this inefficiency
 # is currently acceptable for testing purposes.
 start_tree_depth = 3
-end_tree_depth = 5
+end_tree_depth = 4
 tree_depths = start_tree_depth:end_tree_depth
-Ps = 2:10
-flopcounts = Array{Float64, 2}(undef, length(Ps), length(tree_depths))
+Ps = 2:4
+Ns = exp10.(1:0.25:2)
+
+flopcounts = Array{Float64, 3}(undef, length(Ns), length(Ps), length(tree_depths))
 
 preallocated_size = floor(Int, N/2)
 preallocated_mtx = Array{ComplexF64, 2}(undef, preallocated_size, preallocated_size)
@@ -69,10 +71,14 @@ FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, larg
 for i in 1:length(tree_depths)
   tree_depth = tree_depths[i]
   for j in 1:length(Ps)
+    p = Ps[j]
+    binomial_table   = largeBinomialTable(p)
+    binomial_table_t = binomialTableTransposed(p)
+    large_binomial_table_t = largeBinomialTableTransposed(p)
     for k in 1:length(Ns)
       N = trunc(Int, Ns[i])
-      p = Ps[j]
       # not included in flop counts as this only need to be built once per simulation
+      # COULD this be hoisted one loop?
       quadtree = buildQuadtree(tree_depth, p)
       # Not seeding for accuracy testing, random
       # Random.seed!(2)
@@ -81,9 +87,6 @@ for i in 1:length(tree_depths)
       curr_points      = prev_points .+ 1e-2*tangent_velocity
       masses           = 0.9*rand(Float64, N) .+ 1
       ω_p              = Array{ComplexF64, 1}(undef, N)
-      binomial_table   = largeBinomialTable(p)
-      binomial_table_t = binomialTableTransposed(p)
-      large_binomial_table_t = largeBinomialTableTransposed(p)
       # FLOPCOUNT THIS UPDATE AS WELL
       flopCounter1 = @count_ops updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
       flops = sumAllFlops(flopCounter1)
@@ -91,20 +94,23 @@ for i in 1:length(tree_depths)
       flopCounter2 = @count_ops FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, large_binomial_table_t, preallocated_mtx)
       flops += sumAllFlops(flopCounter2)
       println(flops)
-      flopcounts[i, j] = flops
+      flopcounts[k, j, i] = flops
     end
   end
 end
 
-title!(".\nFMM Hut FlopCount vs. Number of bodies (N)\n")
+title!(".\nFMM FlopCount vs. Number of bodies (N)\n")
 #yaxis!(:log)
 gr(size = (1000, 1000))
 Plots.resetfontsizes();
 Plots.scalefontsizes(1.75);
-p = scatter(Ns, flopcounts[:, 1], label="θ: $start_theta", markerstrokewidth=0, markersize=10)
-for i in 2:length(θs)
-  θ = θs[i]
-  scatter!(Ns, flopcounts[:, i], label="θ: $θ", markerstrokewidth=0, markersize=10)
+p = plot()
+for i in 1:length(tree_depths)
+  tree_depth = tree_depths[i]
+  for j in 1:length(Ps)
+    p = Ps[j]
+    scatter!(Ns, flopcounts[:, j, i], label="p: $θ, tree depth: $tree_depth", markerstrokewidth=0, markersize=10)
+  end
 end
 ylabel!("Barnes Hut Flopcount")
 xlabel!("Number of bodies (N)")
