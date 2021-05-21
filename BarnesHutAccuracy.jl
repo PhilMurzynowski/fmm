@@ -10,7 +10,7 @@ const Δt = 1e-2
 # num timesteps
 const TIMESTEPS = 500
 # number of bodies
-const N = 3
+const N = 10
 
 
 include("BarnesHut.jl")
@@ -59,6 +59,12 @@ for i ∈ 1:TIMESTEPS
     masses[i] = particles[i].mass
   end
 
+  #println("curr_points")
+  #println(curr_points)
+  #println("acc")
+  #println(acc)
+
+  """
   # TEST
   kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(curr_points) .- curr_points)
   foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(curr_points))
@@ -69,6 +75,7 @@ for i ∈ 1:TIMESTEPS
   #println(correct_forces)
   #println(forces)
   @assert correct_forces ≈ acc 
+  """
   
   scatter(curr_points[1, :], curr_points[2, :], xlim=lim, ylim=lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
   gui()

@@ -233,7 +233,8 @@ function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
     #G::Float64 = 6.67430e-11
     #((G * mass) / ((sum(r.^2)+ϵ^2)^(3/2))) .* r
     # don't multiply by G here for consistency with FMM implementation
-    mass ./ (-r .+ S)
+    #mass ./ (r .+ S) # this is not right, was only correct with complex numbers
+    mass ./ (sum(r.^2) .+ S) .* r
 end
 
 """
