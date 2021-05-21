@@ -3,17 +3,20 @@
     Modified Julia code for the Barnes-Hut algorithm for comparison against the FMM
     Credit to: https://github.com/alexhad6/ParallelBarnesHut.jl
 
-    Ported to serial, two dimensional code for purposes of flopcount comparison to FMM using GFlops.jl.
+    Messily, oh very messily, ported to serial, two dimensional code for purposes of flopcount comparison to FMM using GFlops.jl.
     Converting to serial may not be necessary, but easier to debug and want to guarantee nothing is affecting
     flop count.
 
-    This code is actually not that optimized turns out, flop count will be much better measurement of performance than runtime.
+    This code is actually not that optimized turns out, despite being parallelized, flop count will be much better measurement of performance than runtime.
 """
 
 # Imports
 using Plots
 using Random
 
+""" NEW, added these constants """
+# softening paramter to avoid a -> inf when particles close
+const S = 1e-32
 
 # Exports
 
@@ -266,7 +269,7 @@ end
 """
     net_acc(particle, node, θ, acc_func)
 Recursively calculate the net acceleration on a particle given the Barnes Hut
-octree, a threshold `θ`, and the acceleration function `acc_func`.
+quadtree, a threshold `θ`, and the acceleration function `acc_func`.
 """
 function net_acc(particle::Particle, node::Union{Node, Nothing}, θ::Float64, acc_func)
     # Recusively calculates net acceleration on a particle given a particle tree
@@ -289,11 +292,11 @@ function net_acc(particle::Particle, node::Union{Node, Nothing}, θ::Float64, ac
 end
 
 """
-    grav_acc(mass, r; ϵ = 0.02)
 Calculate the gravitation acceleration on a particle given the mass of another
 object and the distance vector from particle to object. The usual gravitational
 force is softened by a factor `ϵ` to prevent it from blowing up when the
 distance is very small.
+MODIFIED: using global constants, G, and S for gravitational constant and softening parameter respectively
 """
 function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
     # Calculate gravitational acceleration, using node center of mass
