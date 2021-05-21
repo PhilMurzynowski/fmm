@@ -39,6 +39,7 @@ function largeBinomialTable(n::Int)
   return table
 end
 
+# REALIZED: Probably should try using Float64 instead, at small cost in accuracy
 function largeBinomialTableTransposed(n::Int)
   table = Array{Int128, 2}(undef, 2*n+1, n+1)
   for i in 0:n
