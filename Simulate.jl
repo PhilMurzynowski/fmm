@@ -19,7 +19,7 @@ const S = 1e-32
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 1
+const TIMESTEPS = 100
 # number of bodies
 const N = 1000
 # number of past positions saved
@@ -60,6 +60,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     #@btime FMM!(quadtree, $curr_points, $masses, $ω_p, $binomial_table, $binomial_table_t, $preallocated_mtx)
 
     # TEST
+    """
     println("Testing")
     forces = [real(ω_p), -imag(ω_p)]
     correct_ω_p = similar(ω_p)
@@ -73,6 +74,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     #println(correct_forces)
     #println(forces)
     @assert correct_forces ≈ forces 
+    """
 
     #VERIFY: verlet integration
     #OPTIMIZE : column layout, can reinterpte complex as two reals

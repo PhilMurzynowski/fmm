@@ -32,7 +32,7 @@ const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 start_tree_depth = 3
 end_tree_depth = 5
 tree_depths = start_tree_depth:end_tree_depth
-Ps = 2:60
+Ps = 2:10
 times = Array{Float64, 2}(undef, length(Ps), length(tree_depths))
 
 preallocated_size = floor(Int, N/2)

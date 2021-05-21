@@ -7,25 +7,26 @@ include("FourColorSort.jl")
 
 """ Basic unit of a Quadtree """
 
-
 mutable struct Box
-  depth::Int
-  idx::Int
-  # center of box
-  center::ComplexF64
-  parent_idx::Int
-  children_idxs::Array{Int, 1}    # switch to static arrays, faster, # do not store for leaf nodes
-  neighbor_idxs::Array{Int, 1}    # perhaps this is only stored for leaf nodes
-  interaction_idxs::Array{Int, 1} # aka the interaction list
+  # multipole expansion information
+  # outer expansion and inner expansions
+  outer_exp::Array{ComplexF64, 1}
+  inner_exp::Array{ComplexF64, 1}
   # indices into point and mass arrays
   # cannot use this if keeping quadtree immutable and do not want to rebuild each timestep
   start_idx::Int
   final_idx::Int
-  # multipole expansion information
-  a::Array{ComplexF64, 1}
-  b::Array{ComplexF64, 1}
+  # center of box
+  center::ComplexF64
+  # all organizational info is kept in the footer
+  depth::Int
+  idx::Int
+  children_idxs::Array{Int, 1}    # switch to static arrays, faster, # do not store for leaf nodes
+  neighbor_idxs::Array{Int, 1}    # perhaps this is only stored for leaf nodes
+  parent_idx::Int
+  interaction_idxs::Array{Int, 1} # aka the interaction list
   # initialize start, final as 0, -1. -1 chosen so final < start
-  Box(depth::Int, idx::Int, center::ComplexF64, p::Int) = new(depth, idx, center, findParentIdx(depth, idx), findChildrenIdxs(depth, idx), findNeighborIdxs(depth, idx), findInteractionIdxs(depth, idx), 0, -1, zeros(ComplexF64, p+1), zeros(ComplexF64, p)) 
+  Box(depth::Int, idx::Int, center::ComplexF64, p::Int) = new(zeros(ComplexF64, p+1), zeros(ComplexF64, p), 0, -1, center, depth, idx, findChildrenIdxs(idx, depth), findNeighborIdxs(idx, depth), findParentIdx(idx, depth), findInteractionIdxs(idx, depth)) 
 end
 
 struct Quadtree
@@ -102,13 +103,16 @@ end
 """ Functions used to navigate quadtree """
 
 
-function findParentIdx(depth::Int, idx::Int)
-  y::Int = ceil(mod1(idx, 2^depth) / 2)
-  x::Int = floor((idx-1) / 2^(depth+1))
-  return x*2^(depth-1) + y
+function getBoxCenter(depth, idx, side_length)
+  # reminder that using column-major orering for idxs
+  box_side_length = side_length / 2^depth
+  half_box_side_length = box_side_length / 2
+  x::Float64 = floor((idx - 1) / 2^depth) * box_side_length + half_box_side_length 
+  y::Float64 = (2^depth - mod1(idx, 2^depth)) * box_side_length + half_box_side_length
+  return x + y*1im
 end
 
-function findChildrenIdxs(depth::Int, idx::Int)
+function findChildrenIdxs(idx::Int, depth::Int)
   # find index for top left child
   # other children are simple offsets from first child
   y_contribution::Int = mod(idx - 1, 2^depth) * 2 + 1 
@@ -120,7 +124,7 @@ function findChildrenIdxs(depth::Int, idx::Int)
   return [tl_child, bl_child, tr_child, br_child]
 end
 
-function findNeighborIdxs(depth::Int, idx::Int)
+function findNeighborIdxs(idx::Int, depth::Int)
   column_size::Int = 2^depth
   num_boxes::Int = 4^depth
   neighbors::Array{Int, 1} = Array{Int, 1}[]
@@ -162,25 +166,6 @@ function findNeighborIdxs(depth::Int, idx::Int)
   return neighbors
 end
 
-function findInteractionIdxs(depth::Int, idx::Int)
-  if (depth == 1)
-    return Array{Int, 1}[]
-  end
-  parent_idx::Int = findParentIdx(depth, idx)
-  parent_neighbor_idxs::Array{Int, 1} = findNeighborIdxs(depth-1, parent_idx)
-  interacting_idxs::Array{Int, 1} = vcat(findChildrenIdxs.(depth-1, parent_neighbor_idxs)...)
-  return setdiff(interacting_idxs, findNeighborIdxs(depth, idx))
-end
-
-function getBoxCenter(depth, idx, side_length)
-  # reminder that using column-major orering for idxs
-  box_side_length = side_length / 2^depth
-  half_box_side_length = box_side_length / 2
-  x::Float64 = floor((idx - 1) / 2^depth) * box_side_length + half_box_side_length 
-  y::Float64 = (2^depth - mod1(idx, 2^depth)) * box_side_length + half_box_side_length
-  return x + y*1im
-end
-
 function boxHasPoints(box::Box)
   return box.final_idx >= box.start_idx
 end
@@ -191,4 +176,20 @@ end
 
 function getOffsetOfDepth(quadtree::Quadtree, depth::Int)
   return quadtree.depth_offsets[depth]
+end
+
+function findParentIdx(idx::Int, depth::Int)
+  y::Int = ceil(mod1(idx, 2^depth) / 2)
+  x::Int = floor((idx-1) / 2^(depth+1))
+  return x*2^(depth-1) + y
+end
+
+function findInteractionIdxs(idx::Int, depth::Int)
+  if (depth == 1)
+    return Array{Int, 1}[]
+  end
+  parent_idx::Int = findParentIdx(idx, depth)
+  parent_neighbor_idxs::Array{Int, 1} = findNeighborIdxs(parent_idx, depth-1)
+  interacting_idxs::Array{Int, 1} = vcat(findChildrenIdxs.(parent_neighbor_idxs, depth-1)...)
+  return setdiff(interacting_idxs, findNeighborIdxs(idx, depth))
 end

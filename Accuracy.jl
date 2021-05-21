@@ -31,7 +31,7 @@ const TREE_DEPTH = 3
 # System was designed around the assumption of constant P (number of multipole terms),
 # so will have to do some inefficient rebuilds, but this inefficiency
 # is currently acceptable for testing purposes.
-Ps = 2:60
+Ps = 2:50
 abs_error = Array{Float64, 1}(undef, length(Ps))
 rel_error = Array{Float64, 1}(undef, length(Ps))
 
