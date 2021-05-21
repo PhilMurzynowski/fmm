@@ -50,13 +50,14 @@ for p in Ps
   ω_p            = Array{ComplexF64, 1}(undef, N)
   binomial_table = largeBinomialTable(p)
   binomial_table_t = binomialTableTransposed(p)
+  large_binomial_table_t = largeBinomialTableTransposed(p)
   next_idx = 3
   curr_idx = 2
   prev_idx = 1
   curr_points = @view pos_memory[:, curr_idx]
   prev_points = @view pos_memory[:, prev_idx]
   updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
-  FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, preallocated_mtx)
+  FMM!(quadtree, curr_points, masses, ω_p, binomial_table, binomial_table_t, large_binomial_table_t, preallocated_mtx)
 
   # TEST
   forces = [real(ω_p), -imag(ω_p)]
