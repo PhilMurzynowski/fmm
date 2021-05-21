@@ -208,13 +208,13 @@ function net_acc(particle::Particle, node::Union{Node, Nothing}, θ_squared::Flo
         r = node.center_of_mass .- particle.pos  # Vector from particle to node center of mass
         # couldn't resist fixing this
         #if s/√sum(r.^2) < θ
-        if s*s/sum(r.^2) < θ_sq
+        if s*s/sum(r.^2) < θ_squared
             # Base case 2: if node size divided by distance is less than threshold θ,
             #              calculate gravitational acceleration
             acc_func(node.total_mass, r)
         else
             # Recursive case
-            sum(net_acc(particle, child, θ_sq, acc_func) for child in node.children)
+            sum(net_acc(particle, child, θ_squared, acc_func) for child in node.children)
         end
     end
 end
@@ -238,11 +238,11 @@ function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
 end
 
 """ New function """
-function barnesHutUpdate!(acc, particles)
+function barnesHutUpdate!(acc, particles, θ_squared)
   tree = generate_tree(particles)
   for i in 1:length(particles)
     particle = particles[i]
-    a = net_acc(particle, tree, θ_sq, grav_acc)
+    a = net_acc(particle, tree, θ_squared, grav_acc)
     acc[:, i] .= a
   end
 end

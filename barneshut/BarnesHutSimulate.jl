@@ -16,13 +16,6 @@ const N = 100
 include("BarnesHut.jl")
 
 
-num_tests = 5
-
-
-abs_error = Array{Float64, 1}(undef, length(num_tests))
-rel_error = Array{Float64, 1}(undef, length(num_tests))
-
-
 prev_points = rand(Float64, 2, N)
 tangent_velocity = similar(prev_points)
 tangent_velocity[1, :] = prev_points[2, :] .- 0.5
@@ -85,6 +78,3 @@ for i ∈ 1:TIMESTEPS
   gui()
   #sleep(0.01)
 end
-
-
-gui() 
