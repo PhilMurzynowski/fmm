@@ -190,82 +190,6 @@ function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corne
     end
 end
 
-
-# Barnes Hut Simulation
-
-"""
-    simulate!(particles, steps; Δt = 0.1, θ = 0.5, acc_func = grav_acc)
-Approximately solve N-body problem for an array of particles for number of time
-steps into the future using the Barnes Hut method. Return an array of particle
-arrays, where each particle array is the state of all particles at each time
-step.
-# Arguments
-- `particles::Array{Particle,1}`: an array of particles.
-- `steps::Int64`: the number of time steps to run the simulation.
-- `Δt::Float64 = 0.1`: length of time step in seconds (keyword argument).
-- `θ::Float64 = 0.5`: node size to particle distance threshold for Barnes Hut
-  simulation (keyword argument).
-- `acc_func(mass::Float64, r::Array{Float64,1}) = grav_acc`: calculates particle
-  acceleration from mass and distance vector.
-
-SCRAPPED, will be using completely different simulation pipeline
-
-function simulate!(particles::Array{Particle,1}, steps::Int64;
-                   Δt::Float64 = 0.1, θ::Float64 = 0.5, acc_func = grav_acc)
-    # Initialize array of snapshots of particles at each time step
-    frames = Array{Particle,1}[]
-    
-    # Store initial conditions as first frame
-    push!(frames, deepcopy(particles))
-    
-    # Advance velocity by half time step to do leapfrog integration method
-    vel_step!(particles, generate_tree(particles), Δt/2, θ, acc_func)
-    
-    # Simulate steps and save each frame
-    for i = 1:steps
-        step!(particles, generate_tree(particles), Δt, θ, acc_func)
-        push!(frames, deepcopy(particles))
-    end
-    
-    # Return frames
-    frames
-end
-"""
-
-"""
-    vel_step!(particles, tree, Δt, θ, acc_func)
-Calculate the acceleration of each particle using `net_acc` and approximate new
-velocity using `Δt`.
-
-SCRAPPED, will be using completely different simulation pipeline
-
-function vel_step!(particles::Array{Particle,1}, tree::Node, Δt::Float64, θ::Float64, acc_func)
-    # Calculate acceleration and approximately advance velocity (using threading)
-    @sync for particle in particles
-        Threads.@spawn begin
-            particle.vel += net_acc(particle, tree, θ, acc_func) * Δt
-        end
-    end
-end
-"""
-
-"""
-    step!(particles, tree, Δt, θ, acc_func)
-Calculate the acceleration of each particle using `net_acc` and approximate new
-velocity and position using `Δt`.
-
-SCRAPPED, will be using completely different simulation pipeline
-function step!(particles::Array{Particle,1}, tree::Node, Δt::Float64, θ::Float64, acc_func)
-    # Calculate acceleration, and approximately advance velocity and position (using threading)
-    @sync for particle in particles
-        Threads.@spawn begin
-            particle.vel += net_acc(particle, tree, θ, acc_func) * Δt
-            particle.pos += particle.vel * Δt
-        end
-    end
-end
-"""
-
 """
     net_acc(particle, node, θ, acc_func)
 Recursively calculate the net acceleration on a particle given the Barnes Hut
@@ -297,6 +221,7 @@ Calculate the gravitation acceleration on a particle given the mass of another
 object and the distance vector from particle to object. The usual gravitational
 force is softened by a factor `ϵ` to prevent it from blowing up when the
 distance is very small.
+
 MODIFIED: using global constants, G, and S for gravitational constant and softening parameter respectively
 """
 function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
@@ -305,127 +230,6 @@ function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
     #G::Float64 = 6.67430e-11
     #((G * mass) / ((sum(r.^2)+ϵ^2)^(3/2))) .* r
     # don't multiply by G here for consistency with FMM implementation
-    ((G * mass) / ((sum(r.^2)+ϵ^2)^(3/2))) .* r
+    mass / (r + S)
 end
 
-
-# Display and Animate Particles
-
-"""
-    show_particles(particles, θ = 30.0, ϕ = 30.0)
-Using the `Plots` package, display an array of particles in 3D with azimuthal
-camera angle θ and elevation angle ϕ.
-
-SCRAPPED, will use own
-function show_particles(particles::Array{Particle,1}, θ::Float64 = 30.0, ϕ::Float64 = 30.0)
-    scatter([Tuple(p.pos) for p = particles],
-        lims = (-1, 1),
-        camera = (θ, ϕ),
-        size = (500, 500),
-        label = "",
-        background_color = :black,
-        marker = (:circle, 3, 0.8, :white, stroke(0)))
-end
-"""
-
-"""
-    show_quadview(particles)
-Display four views of the particles in 3D at different camera angles.
-
-function show_quadview(particles::Array{Particle,1})
-    scatter([Tuple(p.pos) for p = particles],
-        lims = (-1, 1),
-        camera = (30, 30),
-        size = (800, 800),
-        label = "",
-        background_color = :black,
-        marker = (:circle, 3, 0.8, :white, stroke(0)),
-        layout = 4,
-        subplot = 1)
-    scatter!([Tuple(p.pos) for p = particles],
-        lims = (-1, 1),
-        camera = (0, 90),
-        label = "",
-        marker = (:circle, 3, 0.8, :white, stroke(0)),
-        subplot = 2)
-    scatter!([Tuple(p.pos) for p = particles],
-        lims = (-1, 1),
-        camera = (90, 0),
-        label = "",
-        marker = (:circle, 3, 0.8, :white, stroke(0)),
-        subplot = 3)
-    scatter!([Tuple(p.pos) for p = particles],
-        lims = (-1, 1),
-        camera = (60, 30),
-        label = "",
-        marker = (:circle, 3, 0.8, :white, stroke(0)),
-        subplot = 4)
-end
-"""
-
-"""
-    show_boxes(particles)
-Calculate and display in 3D the cubes represented by the Barnes Hut octree.
-function show_boxes(particles::Array{Particle,1})
-    p = scatter([Tuple(p.pos) for p = particles],
-        camera = (30.0, 30.0),
-        size = (500, 500),
-        label = "",
-        background_color = :black,
-        marker = (:circle, 3, 0.8, :white, stroke(0)))
-    boxes = generate_tree(particles, return_boxes = true)
-    for (s, (x, y, z)) in boxes
-        plot!([(x,y,z),(x+s,y,z),(x+s,y+s,z),(x,y+s,z),(x,y,z),(x,y,z+s),
-               (x+s,y,z+s),(x+s,y+s,z+s),(x,y+s,z+s),(x,y,z+s),(x+s,y,z+s),
-               (x+s,y,z),(x+s,y+s,z),(x+s,y+s,z+s),(x,y+s,z+s),(x,y+s,z)],
-            linecolor = :red,
-            label = "")
-    end
-    p
-end
-"""
-
-"""
-    animate_frames(frames, frame_rate = 1, file_name = "animation"; θ = 30.0, ϕ = 30.0, quadview = false)
-Plot particles for every `frame_rate` frames resulting from a Barnes Hut
-simulation, and generate a gif file of this animation with a custom name.
-Optionally, specify azimuthal camera angle θ and elevation angle ϕ, or set
-quadview to `true` in order to animate at four different angles.
-function animate_frames(frames::Array{Array{Particle,1},1}, frame_rate::Int64 = 1, file_name = "animation";
-                        θ::Float64 = 30.0, ϕ::Float64 = 30.0, quadview::Bool = false)
-    anim = Animation()
-    for i = 1:frame_rate:length(frames)
-        if quadview
-            show_quadview(frames[i])
-        else
-            show_particles(frames[i], θ, ϕ)
-        end
-        frame(anim)
-    end
-    gif(anim, "$file_name.gif")
-end
-"""
-
-
-# Generate Random Particles
-
-"""
-    rand_particles(num_particles::Int64)
-Generate `num_particles` random particles using a distribution similar to a
-disk-shaped galaxy.
-
-SCRAPPED, will use own
-
-function rand_particles(num_particles::Int64)
-    particles = Particle[]
-    for i = 1:num_particles
-        θ = 2π*rand()
-        R = randexp()/ℯ
-        z = (rand() > 0.5 ? 1 : -1) * (randexp()/(10ℯ))
-        v = √(R*num_particles/1e6)
-        mass = 1e4
-        push!(particles, Particle([R*cos(θ), R*sin(θ), z], [v*sin(θ), -v*cos(θ), 0.0], mass))
-    end
-    particles
-end
-"""

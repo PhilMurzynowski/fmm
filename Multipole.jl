@@ -4,7 +4,7 @@
 In a 2D plane gravitational force takes the form 1 / (x - y), which follows
 from a log(x - y) potential function where x and y are complex.
 
-# As a matter of fact optimize out the last mass multiplication so just calculating acceleration instead of
+# As a matter of fact optimize out the last mass multiplication so just calculating acceleration before multiplyin G instead of
 # calculating force and then diving out mass again.
 
 Upward pass components: P2M, M2M
