@@ -44,8 +44,9 @@ end
 start_tree_depth = 3
 end_tree_depth = 4
 tree_depths = start_tree_depth:end_tree_depth
-Ps = 2:4
-Ns = exp10.(1:0.25:2)
+Ps = [2, 10, 33]
+#Ns = exp10.(1:0.25:2)
+Ns = [10, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
 
 flopcounts = Array{Float64, 3}(undef, length(Ns), length(Ps), length(tree_depths))
 
@@ -76,7 +77,7 @@ for i in 1:length(tree_depths)
     binomial_table_t = binomialTableTransposed(p)
     large_binomial_table_t = largeBinomialTableTransposed(p)
     for k in 1:length(Ns)
-      N = trunc(Int, Ns[i])
+      N = trunc(Int, Ns[k])
       # not included in flop counts as this only need to be built once per simulation
       # COULD this be hoisted one loop?
       quadtree = buildQuadtree(tree_depth, p)
@@ -87,6 +88,9 @@ for i in 1:length(tree_depths)
       curr_points      = prev_points .+ 1e-2*tangent_velocity
       masses           = 0.9*rand(Float64, N) .+ 1
       ω_p              = Array{ComplexF64, 1}(undef, N)
+      #println(tree_depth)
+      #println(p)
+      #println(N)
       # FLOPCOUNT THIS UPDATE AS WELL
       flopCounter1 = @count_ops updateQuadtreePointMasses(quadtree, curr_points, masses, prev_points)
       flops = sumAllFlops(flopCounter1)
@@ -109,7 +113,7 @@ for i in 1:length(tree_depths)
   tree_depth = tree_depths[i]
   for j in 1:length(Ps)
     p = Ps[j]
-    scatter!(Ns, flopcounts[:, j, i], label="p: $θ, tree depth: $tree_depth", markerstrokewidth=0, markersize=10)
+    scatter!(Ns, flopcounts[:, j, i], label="p: $p, tree depth: $tree_depth", markerstrokewidth=0, markersize=10)
   end
 end
 ylabel!("Barnes Hut Flopcount")
