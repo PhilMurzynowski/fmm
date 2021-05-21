@@ -31,7 +31,8 @@ end
 
 # these thetas are arrange backwards for convenience
 #θs = exp10.(-3:0.5:0.5)
-θs = exp10.(0.5:-2.5:-3.0)
+#θs = exp10.(0.5:-2.5:-3.0)
+θs = [0.5, 1.0]
 θs_sq = [x^2 for x in θs]
 
 Ns = exp10.(1:0.5:2)
@@ -67,3 +68,4 @@ ylabel!("Barnes Hut Flopcount")
 xlabel!("Number of bodies (N)")
 # Sometimes may want to set this
 #ylims!((0, 0.1))
+gui()
