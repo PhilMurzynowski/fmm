@@ -237,6 +237,16 @@ function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
     mass ./ (sum(r.^2) .+ S) .* r
 end
 
+""" New function """
+function barnesHutUpdate!(acc, particles)
+  tree = generate_tree(particles)
+  for i in 1:length(particles)
+    particle = particles[i]
+    a = net_acc(particle, tree, θ_sq, grav_acc)
+    acc[:, i] .= a
+  end
+end
+
 """
     simulate!(particles, steps; Δt = 0.1, θ = 0.5, acc_func = grav_acc)
 Approximately solve N-body problem for an array of particles for number of time
