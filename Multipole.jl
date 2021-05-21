@@ -112,9 +112,6 @@ function M2M!(quadtree::Quadtree, binomial_table)
           parent_box.outer_exp[i+1] -= 1/i*child_box.outer_exp[1]*powers[i+1]
           powers[i+2] = powers[i+1]*diff
           @inbounds for j in 1:i
-          parent_box.outer_exp[i+1] -= 1/i*child_box.outer_exp[1]*powers[i+1]
-          powers[i+2] = powers[i+1]*diff
-          @inbounds for j in 1:i
             # PROFILED: binomial is expensive! Use a lookup table as only using small k (30 or 50 and under)!
             parent_box.outer_exp[i+1] += binomial_table[j, i]*child_box.outer_exp[j+1]*powers[i-j+1]
           end
