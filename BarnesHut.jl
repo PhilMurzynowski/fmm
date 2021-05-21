@@ -22,33 +22,34 @@ export rand_particles
 
 
 # Structs
+#
+""" NEW """
+struct Point
+  x::Float64
+  y::Float64
+end
 
 """
 Represents a particle in a Barnes Hut simulation. For a galaxy simulation, a
 particle is a star or a group of stars.
-"""
+MODIFIED:
+  to hold previous position instead of velocity
+  also in 2D not 3d
 """
 mutable struct Particle
     "Position coordinates of a particle (in meters)."
-    pos::Array{Float64,1}
-    
-    "Velocity vector of a particle (in meters per second)."
-    vel::Array{Float64,1}
-    
+    pos::Point
+    prev_pos::Point
+
     "Mass of a particle (in kilograms)."
     mass::Float64
 end
-"""
 
 """
 Used in the octree for the Barnes Hut algorithm. Represents a cubical octant of
 space and stores the mass and center of mass of the contained particles.
 """
 
-""" NEW """
-struct Point
-
-end
 
 
 struct Node
@@ -70,27 +71,33 @@ end
 
 """
     generate_tree(particles; return_boxes = false)
-Generate the Barnes Hut octree for a given array of particles. Optionally
+Generate the Barnes Hut quadtree for a given array of particles. Optionally
 return coordinates of the boxes represented by the nodes in the octree.
 """
-function generate_tree(particles::Array{Particle,1}; return_boxes::Bool = false)
+function generate_tree(particles::Array{Particle,1}, return_boxes::Bool = false)
     # Calculate bounds of a box enclosing all particles
-    minx, maxx = minimum(p -> p.pos[1], particles), maximum(p -> p.pos[1], particles)
-    miny, maxy = minimum(p -> p.pos[2], particles), maximum(p -> p.pos[2], particles)
-    minz, maxz = minimum(p -> p.pos[3], particles), maximum(p -> p.pos[3], particles)
+    # SKIP as for fair comparison with FMM will do box with corners (0, 0) & (1, 1)
+    # As FMM already assumes a space of that size
+    #minx, maxx = minimum(p -> p.pos[1], particles), maximum(p -> p.pos[1], particles)
+    #miny, maxy = minimum(p -> p.pos[2], particles), maximum(p -> p.pos[2], particles)
+    # cut out minz, maxz
     
     # Calculate corner and size of a cube enclosing all particles
-    size = max(maxx - minx, maxy - miny, maxz - minz)
-    corner = [minx, miny, minz]
+    #size = max(maxx - minx, maxy - miny, maxz - minz)
+    size = 1.0
+    #corner = [minx, miny, minz]
+    corner = [0.0, 0.0]
     
     if return_boxes
         # Recursively compute tree of particles and return coordinates of boxes
         boxes = Tuple{Float64,Array{Float64,1}}[]
-        boxes_threaded = [Tuple{Float64,Array{Float64,1}}[] for i = 1:Threads.nthreads()]
-        generate_tree_helper(particles, size, corner, return_boxes, boxes_threaded)
-        for thread = eachindex(boxes_threaded)
-           append!(boxes, boxes_threaded[thread])
-        end
+        # SERIAL only
+        #boxes_threaded = [Tuple{Float64,Array{Float64,1}}[] for i = 1:Threads.nthreads()]
+        #generate_tree_helper(particles, size, corner, return_boxes, boxes_threaded)
+        generate_tree_helper(particles, size, corner, return_boxes, boxes)
+        #for thread = eachindex(boxes_threaded)
+        #   append!(boxes, boxes_threaded[thread])
+        #end
         boxes
     else
         # Recursively compute tree of particles and return that tree
