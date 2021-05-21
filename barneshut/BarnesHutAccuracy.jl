@@ -14,13 +14,13 @@ const Δt = 1e-2
 # num timesteps
 const TIMESTEPS = 1
 # number of bodies
-const N = 500
+const N = 1000
 
 
 include("BarnesHut.jl")
 
 
-θs = [x for x in 0.01:0.01:3.0]
+θs = [x for x in 0.2:0.02:5.0]
 θs_sq = [x^2 for x in θs]
 #Ns = exp10.(2:0.5:3)
 
@@ -45,16 +45,6 @@ for i in 1:length(θs)
   θ_sq = θs_sq[i]
 
   barnesHutUpdate!(acc, particles, θ_sq)
-  # put back into arrays for testin or plotting, expensive but ok
-  for i in 1:length(particles)
-    curr_points[:, i] .= particles[i].pos
-    masses[i] = particles[i].mass
-  end
-
-  #println("curr_points")
-  #println(curr_points)
-  #println("acc")
-  #println(acc)
 
   # TEST
   # hacky way, conversions here and back, keeping this way as have verified this test / good to have same test for everything

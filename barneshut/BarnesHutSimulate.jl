@@ -8,9 +8,9 @@ const S = 1e-32
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 500
+const TIMESTEPS = 2
 # number of bodies
-const N = 100
+const N = 2
 
 
 include("BarnesHut.jl")
@@ -32,11 +32,11 @@ particles = [Particle(curr_points[:, i], prev_points[:, i], masses[i]) for i in 
 
 gr(reuse=true, size = (1000, 1000))
 #println(curr_points)
-scatter(curr_points[1, :], curr_points[2, :], xlim=lim, ylim=lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
 lim = (-0.05, 1.05)
+scatter(curr_points[1, :], curr_points[2, :], xlim=lim, ylim=lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
 
 for i ∈ 1:TIMESTEPS
-  time = @elapsed barnesHutUpdate!(acc, particles)
+  time = @elapsed barnesHutUpdate!(acc, particles, θ_sq)
   println(time)
   for i in 1:length(particles)
     particle = particles[i]

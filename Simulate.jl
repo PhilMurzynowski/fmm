@@ -21,7 +21,7 @@ const Δt = 1e-2
 # num timesteps
 const TIMESTEPS = 100
 # number of bodies
-const N = 1000
+const N = 2
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct

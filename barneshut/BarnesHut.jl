@@ -77,6 +77,9 @@ struct Node
     
     "Children of a node in the octree."
     children::Array{Union{Node, Nothing},1}
+
+    " NEW Added "
+    num_particles::Int
 end
 
 
@@ -139,10 +142,10 @@ function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corne
     
     if length(particles) == 0
         # Base case 1: if no particles in quadrant, return empty leaf node
-        Node(size/2, 0, corner .+ size/2, [nothing for i = 1:4])
+        Node(size/2, 0, corner .+ size/2, [nothing for i = 1:4], length(particles))
     elseif length(particles) == 1
         # Base case 2: if one particle in octant, return leaf node with that particle
-        Node(size/2, particles[1].mass, particles[1].pos, [nothing for i = 1:4])
+        Node(size/2, particles[1].mass, particles[1].pos, [nothing for i = 1:4], length(particles))
     else
         # Recursive case
         
@@ -187,7 +190,7 @@ function generate_tree_helper(particles::Array{Particle,1}, size::Float64, corne
         end
         
         # Return node
-        Node(size, total_mass, center_of_mass, children)
+        Node(size, total_mass, center_of_mass, children, length(particles))
     end
 end
 
@@ -198,7 +201,7 @@ quadtree, a threshold `θ`, and the acceleration function `acc_func`.
 """
 function net_acc(particle::Particle, node::Union{Node, Nothing}, θ_squared::Float64, acc_func)
     # Recusively calculates net acceleration on a particle given a particle tree
-    if node == nothing
+    if node == nothing || node.num_particles == 0
         # Base case 1: if tree is empty, return 0 acceleration
         #zeros(Float64, 3)
         zeros(Float64, 2)
@@ -208,7 +211,7 @@ function net_acc(particle::Particle, node::Union{Node, Nothing}, θ_squared::Flo
         r = node.center_of_mass .- particle.pos  # Vector from particle to node center of mass
         # couldn't resist fixing this
         #if s/√sum(r.^2) < θ
-        if s*s/sum(r.^2) < θ_squared
+        if node.num_particles == 1 || s*s/sum(r.^2) < θ_squared
             # Base case 2: if node size divided by distance is less than threshold θ,
             #              calculate gravitational acceleration
             acc_func(node.total_mass, r)
@@ -227,7 +230,7 @@ distance is very small.
 
 MODIFIED: using global constants, G, and S for gravitational constant and softening parameter respectively
 """
-function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
+function grav_acc(mass::Float64, r::Array{Float64,1})
     # Calculate gravitational acceleration, using node center of mass
     # and softening factor ϵ (to prevent blow up at d2 = 0)
     #G::Float64 = 6.67430e-11
