@@ -48,7 +48,7 @@ MODIFIED:
 """
 mutable struct Particle
     "Position coordinates of a particle (in meters)."
-    pos::Point
+    pos::Array{Float64, 1}
     prev_pos::Array{Float64, 1}
 
     "Mass of a particle (in kilograms)."
@@ -195,7 +195,7 @@ end
 Recursively calculate the net acceleration on a particle given the Barnes Hut
 quadtree, a threshold `θ`, and the acceleration function `acc_func`.
 """
-function net_acc(particle::Particle, node::Union{Node, Nothing}, θ::Float64, acc_func)
+function net_acc(particle::Particle, node::Union{Node, Nothing}, θ_squared::Float64, acc_func)
     # Recusively calculates net acceleration on a particle given a particle tree
     if node == nothing
         # Base case 1: if tree is empty, return 0 acceleration
@@ -205,13 +205,15 @@ function net_acc(particle::Particle, node::Union{Node, Nothing}, θ::Float64, ac
         # Recursive case, Barnes Hut method
         s = node.size                            # Width of the square that this node represents
         r = node.center_of_mass .- particle.pos  # Vector from particle to node center of mass
-        if s/√sum(r.^2) < θ
+        # couldn't resist fixing this
+        #if s/√sum(r.^2) < θ
+        if s*s/sum(r.^2) < θ_sq
             # Base case 2: if node size divided by distance is less than threshold θ,
             #              calculate gravitational acceleration
             acc_func(node.total_mass, r)
         else
             # Recursive case
-            sum(net_acc(particle, child, θ, acc_func) for child in node.children)
+            sum(net_acc(particle, child, θ_sq, acc_func) for child in node.children)
         end
     end
 end
