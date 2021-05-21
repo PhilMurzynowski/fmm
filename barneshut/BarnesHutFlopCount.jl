@@ -19,6 +19,7 @@ const TIMESTEPS = 1
 
 include("BarnesHut.jl")
 
+
 function sumAllFlops(flopCounter::GFlops.Counter)
 	FieldsInStruct=fieldnames(typeof(flopCounter));
   total_flops = 0
@@ -70,11 +71,11 @@ title!(".\nBarnes Hut FlopCount vs. Number of bodies (N)\n")
 #yaxis!(:log)
 gr(size = (1000, 1000))
 Plots.resetfontsizes();
-Plots.scalefontsizes(1.5);
-p = scatter(Ns, flopcounts[:, 1], label="θ: $start_theta")
+Plots.scalefontsizes(1.75);
+p = scatter(Ns, flopcounts[:, 1], label="θ: $start_theta", markerstrokewidth=0, markersize=10)
 for i in 2:length(θs)
   θ = θs[i]
-  scatter!(Ns, flopcounts[:, i], label="θ: $θ")
+  scatter!(Ns, flopcounts[:, i], label="θ: $θ", markerstrokewidth=0, markersize=10)
 end
 ylabel!("Barnes Hut Flopcount")
 xlabel!("Number of bodies (N)")
