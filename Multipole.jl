@@ -50,8 +50,8 @@ function P2M!(quadtree::Quadtree, points, masses::Array{Float64, 1})
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
   p = length(quadtree.tree[1].inner_exp)
   # determine multipole expansion at all leaf boxes
-  for global_idx in leaf_offset+1:length(quadtree.tree)
-    box::Box = quadtree.tree[global_idx]
+  for tree_idx in leaf_offset+1:length(quadtree.tree)
+    box::Box = quadtree.tree[tree_idx]
     # builtin sum uses cumsum so using the builtin for better error
     if (boxHasPoints(box))
       relevant_points = @view points[box.start_idx:box.final_idx]
@@ -89,8 +89,8 @@ function M2M!(quadtree::Quadtree, binomial_table)
 
   for depth in quadtree.tree_depth-1:-1:1
     for idx in 1:4^depth
-      global_idx::Int = depth_offsets[depth] + idx
-      parent_box::Box = quadtree.tree[global_idx]
+      tree_idx::Int = depth_offsets[depth] + idx
+      parent_box::Box = quadtree.tree[tree_idx]
       # Zero out as will be adding on contributions from children and not previous timesteps
       # QUESTION: when to zero
       parent_box.outer_exp .= zero(parent_box.outer_exp[1])
@@ -98,8 +98,8 @@ function M2M!(quadtree::Quadtree, binomial_table)
       
       # OPTIMIZED power operations and binomial lookup
       for child_idx in parent_box.children_idxs
-        child_global_idx::Int = depth_offsets[depth+1] + child_idx
-        child_box::Box = quadtree.tree[child_global_idx]
+        child_tree_idx::Int = depth_offsets[depth+1] + child_idx
+        child_box::Box = quadtree.tree[child_tree_idx]
         parent_box.outer_exp[1] += child_box.outer_exp[1]
 
         diff = child_box.center - parent_box.center
@@ -148,8 +148,8 @@ function M2L!(quadtree::Quadtree, binomial_table, large_binomial_table_t)
   if p > 33
     # propogate all the way to the leaf level (inclusive)
     for depth in 2:quadtree.tree_depth
-      @inbounds for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
-        box::Box = quadtree.tree[global_idx]
+      @inbounds for tree_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
+        box::Box = quadtree.tree[tree_idx]
         box.inner_exp .= zero(box.inner_exp[1])
         @inbounds for interaction_idx in box.interaction_idxs
           inter_box::Box = quadtree.tree[depth_offsets[depth] + interaction_idx]
@@ -180,8 +180,8 @@ function M2L!(quadtree::Quadtree, binomial_table, large_binomial_table_t)
     end
   else
     for depth in 2:quadtree.tree_depth
-      @inbounds for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
-        box::Box = quadtree.tree[global_idx]
+      @inbounds for tree_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
+        box::Box = quadtree.tree[tree_idx]
         box.inner_exp .= zero(box.inner_exp[1])
         @inbounds for interaction_idx in box.interaction_idxs
           # interacting box
@@ -232,11 +232,11 @@ function L2L!(quadtree::Quadtree, binomial_table, binomial_table_t::Array{Int64,
   powers[1] = 1.0
 
   for depth in 2:quadtree.tree_depth-1
-    for global_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
-      parent_box::Box = quadtree.tree[global_idx]
+    for tree_idx in depth_offsets[depth]+1:depth_offsets[depth]+4^depth
+      parent_box::Box = quadtree.tree[tree_idx]
       for child_idx in parent_box.children_idxs
-        child_global_idx::Int = depth_offsets[depth+1] + child_idx
-        child_box::Box = quadtree.tree[child_global_idx]
+        child_tree_idx::Int = depth_offsets[depth+1] + child_idx
+        child_box::Box = quadtree.tree[child_tree_idx]
 
         # OPTIMIZED
         diff = child_box.center - parent_box.center
@@ -273,8 +273,8 @@ function L2P!(quadtree::Quadtree, points, ω_p::Array{ComplexF64, 1})
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
   p = length(quadtree.tree[1].inner_exp)
 
-  for global_idx in leaf_offset+1:length(quadtree.tree)
-    box::Box = quadtree.tree[global_idx]
+  for tree_idx in leaf_offset+1:length(quadtree.tree)
+    box::Box = quadtree.tree[tree_idx]
     if (boxHasPoints(box))
       # Not using outerproducts or creating vectors as too memory intensive
       for idx in box.start_idx:box.final_idx
@@ -317,8 +317,8 @@ function NNC!(quadtree::Quadtree, points, masses::Array{Float64, 1}, ω_p::Array
   mtx = @view preallocated_mtx[1:size(preallocated_mtx)[1], 1:size(preallocated_mtx)[2]]
 
   leaf_offset::Int = getOffsetOfDepth(quadtree, quadtree.tree_depth)
-  @inbounds for global_idx in leaf_offset+1:length(quadtree.tree)
-    box::Box = quadtree.tree[global_idx]
+  @inbounds for tree_idx in leaf_offset+1:length(quadtree.tree)
+    box::Box = quadtree.tree[tree_idx]
     if (boxHasPoints(box))
       # do not want to construct large matrices out of memory concerns
       # though if the matrix construction is not a huge penalty may want to look into because of vectorization
