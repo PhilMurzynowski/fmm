@@ -63,17 +63,22 @@ for i ∈ 1:TIMESTEPS
   #println("acc")
   #println(acc)
 
-  """
   # TEST
-  kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(curr_points) .- curr_points)
-  foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(curr_points))
+  """
+  # hacky way, conversions here and back, keeping this way as have verified this test / good to have same test for everything
+  complex_points = reinterpret(ComplexF64, curr_points)
+  kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(complex_points) .- complex_points)
+  foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(complex_points))
   #show(stdout, "text/plain", kernel_mtx)
   # can't do simple dot product unfortunately
+  # not really force, missing a mass term so actually acceleration
   correct_ω_p = vec(sum(kernel_mtx.*masses, dims=1))
-  correct_forces = [real(correct_ω_p), -imag(correct_ω_p)]
-  #println(correct_forces)
-  #println(forces)
-  @assert correct_forces ≈ acc 
+  correct_acc = [real(correct_ω_p), -imag(correct_ω_p)]
+  println(correct_acc)
+  actual_acc = [acc[1, :], acc[2, :]]
+  println(actual_acc)
+  # Don't believe this will ever be close enough to not throw an assertion
+  @assert correct_acc ≈ actual_acc 
   """
   
   scatter(curr_points[1, :], curr_points[2, :], xlim=lim, ylim=lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
