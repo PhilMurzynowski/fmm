@@ -32,6 +32,7 @@ curr_points = prev_points .+ 1e-2 .* tangent_velocity
 prev_points .= max.(min.(prev_points, 1.0), 0)
 curr_points .= max.(min.(curr_points, 1.0), 0)
 masses = 0.9*rand(Float64, N) .+ 1
+acc = similar(curr_points)
 particles = [Particle(curr_points[:, i], prev_points[:, i], masses[i]) for i in 1:N]
 
 θ_sq = 0.25
@@ -43,18 +44,32 @@ lim = (-0.05, 1.05)
 
 for i ∈ 1:TIMESTEPS
   tree = generate_tree(particles)
-  for particle in particles
+  for i in 1:length(particles)
+    particle = particles[i]
     tmp = copy(particle.pos)
     a = net_acc(particle, tree, θ_sq, grav_acc)
     # verlet integration with boundary thresholding
     particle.pos .= max.(min.(2*particle.pos - particle.prev_pos + G * a * Δt^2, 1.0), 0.0)
     particle.prev_pos .= tmp
+    acc[:, i] .= a
   end
   # put back into arrays for plotting, expensive but ok
   for i in 1:length(particles)
     curr_points[:, i] .= particles[i].pos
     masses[i] = particles[i].mass
   end
+
+  # TEST
+  kernel_mtx::Array{ComplexF64, 2} = 1 ./ (transpose(curr_points) .- curr_points)
+  foreach(i -> kernel_mtx[i, i] = zero(kernel_mtx[1, 1]), 1:length(curr_points))
+  #show(stdout, "text/plain", kernel_mtx)
+  # can't do simple dot product unfortunately
+  correct_ω_p = vec(sum(kernel_mtx.*masses, dims=1))
+  correct_forces = [real(correct_ω_p), -imag(correct_ω_p)]
+  #println(correct_forces)
+  #println(forces)
+  @assert correct_forces ≈ acc 
+  
   scatter(curr_points[1, :], curr_points[2, :], xlim=lim, ylim=lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
   gui()
   sleep(0.01)
