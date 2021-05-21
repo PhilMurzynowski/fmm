@@ -9,7 +9,7 @@ const Δt = 1e-2
 # num timesteps
 const TIMESTEPS = 1
 # number of bodies
-const N = 10
+const N = 2
 
 
 include("BarnesHut.jl")
@@ -34,10 +34,20 @@ particles = [Particle(curr_points[:, i], prev_points[:, i], masses[i]) for i in 
 
 θ_sq = 0.25
 
-tree = generate_tree(particles)
-for particle in particles
-  tmp = copy(particle.pos)
-  a = net_acc(particle, tree, θ_sq, grav_acc)
-  particle.pos .= 2*particle.pos - particle.prev_pos + G * a * Δt^2
-  particle.prev_pos .= tmp
+gr(reuse=true, size = (1000, 1000))
+println(curr_points)
+scatter(curr_points[1, :], curr_points[2, :], xlim=lim, ylim=lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
+lim = (-0.05, 1.05)
+
+for i ∈ 1:TIMESTEPS
+  tree = generate_tree(particles)
+  for particle in particles
+    tmp = copy(particle.pos)
+    a = net_acc(particle, tree, θ_sq, grav_acc)
+    particle.pos .= 2*particle.pos - particle.prev_pos + G * a * Δt^2
+    particle.prev_pos .= tmp
+  end
 end
+
+
+gui() 
