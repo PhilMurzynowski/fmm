@@ -233,3 +233,54 @@ function grav_acc(mass::Float64, r::Array{Float64,1}; ϵ::Float64 = 0.02)
     mass / (r + S)
 end
 
+"""
+    simulate!(particles, steps; Δt = 0.1, θ = 0.5, acc_func = grav_acc)
+Approximately solve N-body problem for an array of particles for number of time
+steps into the future using the Barnes Hut method. Return an array of particle
+arrays, where each particle array is the state of all particles at each time
+step.
+# Arguments
+- `particles::Array{Particle,1}`: an array of particles.
+- `steps::Int64`: the number of time steps to run the simulation.
+- `Δt::Float64 = 0.1`: length of time step in seconds (keyword argument).
+- `θ::Float64 = 0.5`: node size to particle distance threshold for Barnes Hut
+  simulation (keyword argument).
+- `acc_func(mass::Float64, r::Array{Float64,1}) = grav_acc`: calculates particle
+  acceleration from mass and distance vector.
+function simulate!(particles::Array{Particle,1}, steps::Int64;
+                   Δt::Float64 = 0.1, θ::Float64 = 0.5, acc_func = grav_acc)
+    # Initialize array of snapshots of particles at each time step
+    #frames = Array{Particle,1}[]
+    
+    # Store initial conditions as first frame
+    #push!(frames, deepcopy(particles))
+    
+    # Advance velocity by half time step to do leapfrog integration method
+    #vel_step!(particles, generate_tree(particles), Δt/2, θ, acc_func)
+    
+    # Simulate steps and save each frame
+    for i = 1:steps
+        step!(particles, generate_tree(particles), Δt, θ, acc_func)
+        #push!(frames, deepcopy(particles))
+    end
+    
+    # Return frames
+    #frames
+end
+"""
+
+"""
+    step!(particles, tree, Δt, θ, acc_func)
+Calculate the acceleration of each particle using `net_acc` and approximate new
+velocity and position using `Δt`.
+function step!(particles::Array{Particle,1}, tree::Node, Δt::Float64, θ::Float64, acc_func)
+    # Calculate acceleration, and approximately advance velocity and position (using threading)
+    #@sync for particle in particles
+    #    Threads.@spawn begin
+    for particle in particles
+      tmp = copy(particle.pos)
+      particle.vel += net_acc(particle, tree, θ, acc_func) * Δt
+      particle.pos += particle.vel * Δt
+    end
+end
+"""
