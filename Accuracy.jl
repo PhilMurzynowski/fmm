@@ -79,7 +79,7 @@ end
 #println(rel_error)
 gr(size = (1000, 1000))
 Plots.resetfontsizes();
-Plots.scalefontsizes(1.5);
+Plots.scalefontsizes(2.0);
 p1 = plot(Ps, abs_error, label="absolute error")
 p2 = plot!(Ps, rel_error, label="relative error") 
 title!(".\nError (L2 norm) vs. Number of expansion Terms (P)\nNumber of bodies: $N, Tree depth: $TREE_DEPTH")

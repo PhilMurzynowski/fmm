@@ -103,20 +103,20 @@ for i in 1:length(tree_depths)
   end
 end
 
-title!(".\nFMM FlopCount vs. Number of bodies (N)\n")
 #yaxis!(:log)
 gr(size = (1000, 1000))
 Plots.resetfontsizes();
-Plots.scalefontsizes(1.75);
+Plots.scalefontsizes(2.0);
 p = plot()
 for i in 1:length(tree_depths)
   tree_depth = tree_depths[i]
   for j in 1:length(Ps)
     p = Ps[j]
-    scatter!(Ns, flopcounts[:, j, i], label="p: $p, tree depth: $tree_depth", markerstrokewidth=0, markersize=10)
+    scatter!(Ns, flopcounts[:, j, i], label="p: $p, tree depth: $tree_depth", markerstrokewidth=0, markersize=10, legend=:topleft)
   end
 end
-ylabel!("Barnes Hut Flopcount")
+title!(".\nFMM FlopCount vs. Number of bodies (N)\n")
+ylabel!("FMM Flopcount")
 xlabel!("Number of bodies (N)")
 # Sometimes may want to set this
 #ylims!((0, 0.1))

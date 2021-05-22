@@ -20,6 +20,7 @@ const TIMESTEPS = 1
 include("BarnesHut.jl")
 
 
+"""
 function sumAllFlops(flopCounter::GFlops.Counter)
 	FieldsInStruct=fieldnames(typeof(flopCounter));
   total_flops = 0
@@ -37,7 +38,7 @@ end
 θs_sq = [x^2 for x in θs]
 start_theta = θs[1]
 
-Ns = exp10.(1:0.25:2)
+Ns = [10, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
 
 flopcounts = Array{Float64, 2}(undef, length(Ns), length(θs))
 
@@ -60,23 +61,48 @@ for j in 1:length(θs)
     θ_sq = θs_sq[j]
 
     barnesHutUpdate!(acc, particles, θ_sq)
-    flopCounter = @count_ops barnesHutUpdate!($acc, $particles, $θ_sq)
+    flopCounter = @count_ops barnesHutUpdate!(acc, particles, θ_sq)
     flops = sumAllFlops(flopCounter)
     println(flops)
     flopcounts[i, j] = flops
   end
 end
+"""
+
+
+"""
+1900033
+4560900
+7430269
+10540350
+13811792
+17122126
+20542343
+24069500
+1853
+763954
+1713476
+2733263
+3846872
+4975425
+6130552
+7263698
+"""
+
+# Skipping all of this code because have collected data already
 
 title!(".\nBarnes Hut FlopCount vs. Number of bodies (N)\n")
 #yaxis!(:log)
 gr(size = (1000, 1000))
 Plots.resetfontsizes();
 Plots.scalefontsizes(1.75);
+#p = scatter(Ns, flopcounts[:, 1], label="θ: $start_theta", markerstrokewidth=0, markersize=10)
+#for i in 2:length(θs)
+#  θ = θs[i]
+#  scatter!(Ns, flopcounts[:, i], label="θ: $θ", markerstrokewidth=0, markersize=10)
+#end
 p = scatter(Ns, flopcounts[:, 1], label="θ: $start_theta", markerstrokewidth=0, markersize=10)
-for i in 2:length(θs)
-  θ = θs[i]
-  scatter!(Ns, flopcounts[:, i], label="θ: $θ", markerstrokewidth=0, markersize=10)
-end
+
 ylabel!("Barnes Hut Flopcount")
 xlabel!("Number of bodies (N)")
 # Sometimes may want to set this

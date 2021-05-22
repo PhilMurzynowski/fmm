@@ -14,7 +14,7 @@ const Δt = 1e-2
 # num timesteps
 const TIMESTEPS = 1
 # number of bodies
-const N = 1000
+const N = 5000
 
 
 include("BarnesHut.jl")
@@ -70,7 +70,7 @@ end
 #println(rel_error)
 gr(size = (1000, 1000))
 Plots.resetfontsizes();
-Plots.scalefontsizes(1.5);
+Plots.scalefontsizes(2.0);
 p1 = plot(θs, abs_error, label="absolute error")
 p2 = plot!(θs, rel_error, label="relative error") 
 title!(".\nError (L2 norm) vs. Barnes Hut MAC (θ)\nNumber of bodies: $N")
