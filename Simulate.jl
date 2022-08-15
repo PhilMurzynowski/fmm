@@ -19,15 +19,17 @@ const S = 1e-32
 # timestep
 const Δt = 1e-2
 # num timesteps
-const TIMESTEPS = 100
+const TIMESTEPS = 1000
 # number of bodies
-const N = 2
+const N = 1000
 # number of past positions saved
 const NUM_PAST_POSITIONS = 3 # do not support plotting history yet, set to 3
 # depth of tree to construct
 const TREE_DEPTH = 3
 # number of terms to keep in multipole expansion
-const P = 33 # keeping multiple of 4 for easier vectorization, actually more complicated as often need P+1
+const P = 32 # keeping multiple of 4 for easier vectorization, actually more complicated as often need P+1
+const MARKERSIZE = 7
+const MASSVARIANCE = 0.9
 
 function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, num_past_positions=NUM_PAST_POSITIONS)
   gr(reuse=true, size = (1000, 1000))
@@ -110,7 +112,7 @@ function runSimulation(quadtree, pos_memory, masses, ω_p, timesteps=TIMESTEPS, 
     # Perhaps in future update.
     # plot((real(transpose(pos_memory)), imag(transpose(pos_memory))), xlim = lim, ylim = lim, color=:black, label="", legend=false)
     
-    scatter((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=7*masses, color=:black, label="")
+    scatter((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=MARKERSIZE*masses, color=:black, label="")
     #scatter((x, y), xlim = lim, ylim = lim, legend=false, markerstrokewidth=0, markersize=7*masses, label="")
     gui() 
   end
@@ -138,7 +140,7 @@ position_memory[:, 1]  = rand(ComplexF64, N)
 tangent_velocity = imag(position_memory[:, 1] .- (0.5 + 0.5im)) .- 1im*real(position_memory[:, 1] .- (0.5 + 0.5im))
 position_memory[:, 2]  = position_memory[:, 1] .+ 1e-2*tangent_velocity
 
-masses         = 0.9*rand(Float64, N) .+ 1
+masses         = MASSVARIANCE*rand(Float64, N) .+ 1
 ω_p            = Array{ComplexF64, 1}(undef, N)
 
 #println("initial position")
