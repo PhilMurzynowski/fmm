@@ -1,4 +1,4 @@
-Files for the Fast Multipole Method.
+Fast, high-performance implementation of the Fast Multipole Method for simulation of the n-body problem in Julia. Written for 18.335 (Numerical Methods) in 2021.
 
 Simulate and visualize by running `Simulate.jl`. Number of bodies, precision, size of time steps, number of time steps, gravitational constant, etc. can all be changed within `Simulate.jl`. Once all necessary packages are installed should only take at most a few seconds to boot the first run, and then the simulation is set to run for approximately 10 seconds.
 
